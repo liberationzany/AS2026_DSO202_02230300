@@ -1,0 +1,96 @@
+# =============================================================================
+# File        : manifests/01-quota-and-limits.yaml
+# Practical   : DSO202 Practical 1
+# Apply with  : kubectl apply -f manifests/01-quota-and-limits.yaml
+# Contains    : two objects, separated by the YAML document separator '---'
+# =============================================================================
+
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: dso202-quota
+  namespace: dso202-practical-01
+  labels:
+    dso202/practical: "01"
+    dso202/managed-by: declarative
+spec:
+  # 'hard' values are absolute. The API server rejects any request that would
+  # take the namespace past one of them.
+  #
+  # Setting a compute cap has a second effect that is easy to miss: once
+  # 'requests.cpu' is capped, EVERY container in the namespace must declare
+  # requests.cpu, or its Pod is rejected. That is why the LimitRange below is
+  # applied at the same time.
+  hard:
+    # Total guaranteed CPU across all Pods. 2 means two full CPU cores.
+    # Chosen because the workloads in this practical request about 500m in
+    # total, leaving room for the extension tasks without exhausting a
+    # typical laptop.
+    requests.cpu: "2"
+
+    # Total guaranteed memory across all Pods.
+    requests.memory: 2Gi
+
+    # Total maximum CPU. Higher than the request total because limits are
+    # allowed to be over-committed: containers rarely reach their limits at
+    # the same moment.
+    limits.cpu: "4"
+    limits.memory: 4Gi
+
+    # An object-count cap. It stops runaway creation from filling the cluster
+    # even when the objects themselves consume no CPU or memory.
+    # 20 comfortably accomodate Pods this practical creates.
+    pods: "20"
+
+    # Object-count caps may be written for any resource with 'count/<resource>'.
+    # This practical creates 2 Services; 5 leaves room for the extensions.
+    count/services: "5"
+
+    # ConfigMaps and Secrets are introduced in a later practical. The caps are
+    # stated here so that the pattern is visible.
+    count/configmaps: "10"
+    count/secrets: "10"
+
+---
+
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: dso202-limits
+  namespace: dso202-practical-01
+  labels:
+    dso202/practical: "01"
+    dso202/managed-by: declarative
+spec:
+  limits:
+    # 'type: Container' means these rules are evaluated per container, not per
+    # Pod. A LimitRange may also target Pod or PersistentVolumeClaim.
+    - type: Container
+
+      # Applied as 'limits' when a container declares none. Without this, the
+      # ResourceQuota above would reject any container that omitted limits.
+      default:
+        cpu: 200m
+        memory: 128Mi
+
+      # Applied as 'requests' when a container declares none.
+      # Deliberately lower than 'default': a request is what is guaranteed and
+      # is what the scheduler reserves, while a limit is a ceiling. Requesting
+      # less than the ceiling allows more Pods per node.
+      defaultRequest:
+        cpu: 50m
+        memory: 64Mi
+
+      # The smallest values a container may declare. Below these, a container
+      # is so constrained that it will fail in ways that look like bugs.
+      min:
+        cpu: 10m
+        memory: 16Mi
+
+      # The largest values a container may declare. This is what makes the
+      # 600Mi request in Extension 2 fail. Note that a LimitRange rejects the
+      # single container, whereas a ResourceQuota rejects based on the
+      # namespace total - two different mechanisms with similar messages.
+      max:
+        cpu: "1"
+        memory: 512Mi
