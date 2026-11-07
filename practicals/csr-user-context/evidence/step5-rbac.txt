@@ -1,0 +1,44 @@
+$ kubectl --context kind-dso202 --client-certificate=C:/Users/zeroe/k8s-users/saroj.crt --client-key=C:/Users/zeroe/k8s-users/saroj.key auth whoami
+ATTRIBUTE                                           VALUE
+Username                                            saroj
+Groups                                              [dev-team system:authenticated]
+Extra: authentication.kubernetes.io/credential-id   [X509SHA256=fa27f970dbcb89883d6513599e965d673b2b7f498efff5557a701935b8ce88c1]
+
+$ kubectl --context kind-dso202 --client-certificate=C:/Users/zeroe/k8s-users/saroj.crt --client-key=C:/Users/zeroe/k8s-users/saroj.key get pods -n default
+Error from server (Forbidden): pods is forbidden: User "saroj" cannot list resource "pods" in API group "" in the namespace "default"
+
+$ kubectl create namespace dev
+namespace/dev created
+
+$ kubectl create role pod-manager --namespace=dev --verb=get,list,watch,create,delete --resource=pods,pods/log,deployments
+role.rbac.authorization.k8s.io/pod-manager created
+
+$ kubectl create rolebinding saroj-pod-manager --namespace=dev --role=pod-manager --user=saroj
+rolebinding.rbac.authorization.k8s.io/saroj-pod-manager created
+
+$ kubectl describe role pod-manager -n dev
+Name:         pod-manager
+Labels:       <none>
+Annotations:  <none>
+PolicyRule:
+  Resources         Non-Resource URLs  Resource Names  Verbs
+  ---------         -----------------  --------------  -----
+  pods/log          []                 []              [get list watch create delete]
+  pods              []                 []              [get list watch create delete]
+  deployments.apps  []                 []              [get list watch create delete]
+
+$ kubectl describe rolebinding saroj-pod-manager -n dev
+Name:         saroj-pod-manager
+Labels:       <none>
+Annotations:  <none>
+Role:
+  Kind:  Role
+  Name:  pod-manager
+Subjects:
+  Kind  Name   Namespace
+  ----  ----   ---------
+  User  saroj  
+
+$ kubectl diff -f manifests/02-namespace-dev.yaml -f manifests/03-role-pod-manager.yaml -f manifests/04-rolebinding-saroj.yaml; echo "kubectl diff exit code: $? (0 = the committed manifests match the live objects)"
+kubectl diff exit code: 0 (0 = the committed manifests match the live objects)
+

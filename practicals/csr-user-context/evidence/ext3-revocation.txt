@@ -1,0 +1,49 @@
+# 1) Delete the CSR object - the certificate is unaffected
+$ kubectl delete csr saroj pema
+certificatesigningrequest.certificates.k8s.io "saroj" deleted
+certificatesigningrequest.certificates.k8s.io "pema" deleted
+
+$ kubectl --context saroj-dev auth whoami | head -3
+ATTRIBUTE                                           VALUE
+Username                                            saroj
+Groups                                              [dev-team system:authenticated]
+
+$ kubectl --context saroj-dev get pods
+No resources found in dev namespace.
+
+# 2) Delete saroj's USER binding - still allowed, through the dev-team GROUP binding
+$ kubectl delete rolebinding saroj-pod-manager -n dev
+rolebinding.rbac.authorization.k8s.io "saroj-pod-manager" deleted from dev namespace
+
+$ kubectl --context saroj-dev get pods
+No resources found in dev namespace.
+
+$ kubectl auth can-i list pods -n dev --as=saroj                         # impersonation without the group says no...
+no
+
+$ kubectl auth can-i list pods -n dev --as=saroj --as-group=dev-team     # ...the real certificate carries the group
+yes
+
+# 3) Delete the group binding too - authorisation is gone, authentication is not
+$ kubectl delete rolebinding dev-team-pod-manager -n dev
+rolebinding.rbac.authorization.k8s.io "dev-team-pod-manager" deleted from dev namespace
+
+$ kubectl --context saroj-dev get pods
+Error from server (Forbidden): pods is forbidden: User "saroj" cannot list resource "pods" in API group "" in the namespace "dev"
+
+$ kubectl --context saroj-dev auth whoami | head -3
+ATTRIBUTE                                           VALUE
+Username                                            saroj
+Groups                                              [dev-team system:authenticated]
+
+$ openssl x509 -in C:/Users/zeroe/k8s-users/saroj.crt -noout -enddate
+notAfter=Feb  5 17:11:53 2027 GMT
+
+# 4) Restore the bindings from the committed manifests
+$ kubectl apply -f $P2/manifests/04-rolebinding-saroj.yaml -f $P2/manifests/05-rolebinding-dev-team.yaml
+rolebinding.rbac.authorization.k8s.io/saroj-pod-manager created
+rolebinding.rbac.authorization.k8s.io/dev-team-pod-manager created
+
+$ kubectl --context saroj-dev get pods
+No resources found in dev namespace.
+

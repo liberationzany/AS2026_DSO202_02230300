@@ -1,0 +1,19 @@
+# 01-csr-saroj.yaml - asks the cluster CA (through kube-controller-manager's
+# csrsigning controller) to sign saroj.csr as a client certificate.
+# spec.request is the base64 of the PEM CSR from Step 2. A CSR only holds the
+# public key and the subject, so it is safe to keep in Git. The private key
+# (saroj.key) stays in ~/k8s-users and is never committed.
+apiVersion: certificates.k8s.io/v1
+kind: CertificateSigningRequest
+metadata:
+  name: saroj
+spec:
+  request: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0NCk1JSUNhRENDQVZBQ0FRQXdJekVPTUF3R0ExVUVBd3dGYzJGeWIyb3hFVEFQQmdOVkJBb01DR1JsZGkxMFpXRnQNCk1JSUJJakFOQmdrcWhraUc5dzBCQVFFRkFBT0NBUThBTUlJQkNnS0NBUUVBN3hnTmV0VGltSjNpdlEwNEFjOFANClVlbm1vUnVnTnRwNlNJbUg1dXM5Z094bmVXWVRWZGZFY0V6ZTR5WU01dlVJMWhqaFQ1dkk4MHczeEUxdDhmVmwNCnZvdCtDL0lId0dPa24xY21pbURkblVoQlBNckpDZkc1bmFMSE5QY3F2TWo0NGhwVytyUk96QWJqTEhBaWwxOGYNCnNXRmJyT29WOWZMSStpckV3Z0ZFTE5McmZZL1Y1UDBWWXJwQnRtekVXRmg1Y0ZDbnB6Mmt4ejFDTnVpemJuN3MNClBYcm5HUTBiTCs2M0ZNMUVSUldBcFZBSEtNS0RRUi9DbUI1WEs5TFhoQ1JXRGdGYSt6ZFFHelRjWlVtWFo0TTkNCllDdDlZbVlYeWllVlRTRXRVNzdTQWRRY3FrZkdYOVU3SGRXZTg4TzRwVnJkMnIxbWQ5eGszZHhTNW5tRW0ybk4NCm9RSURBUUFCb0FBd0RRWUpLb1pJaHZjTkFRRUxCUUFEZ2dFQkFNeFFFcFRPZE1aSjVTbDBmQysvTXpCZEI2VlMNCkJYRGFaU1dmZHpSOGord3Q5bzFVU1FSSjMrZU1nYkhlZzdoVXA4T2VnVWZxN0FtRVlHWnkxWU0yRGdENlhhbnkNCkF2STdlZzRYZHJmSXNpYWZlbkFnSkZUQ3VrSG5TMW5kYyttcDFnVXo5bmc4ZmtHNnZTS0R1RzBLaGZvdWRwZEcNClpiWUt1YUNxUTRJZ1FmdVg4dDc4MUdmeEFvY0hQeE5FMkdraS8yeTVXK01sSG9CZGpadzRvelh2NDJFUzFGelMNCm9DYU1uTzd1YURUVXV4MWJqZ3ZzWENHODdaem9VbmhGTENPSVFqUjh3R2dsUGlpd1VLbHkzZ2FKR2tiRWgvUzANClllMUdRbWJEVVRwSm96cWk4TExYbWROajJlTkowbjE2VVJ6aWhqekEyeitiaWRJb2l3VS9RdEhnNEV3PQ0KLS0tLS1FTkQgQ0VSVElGSUNBVEUgUkVRVUVTVC0tLS0tDQo=
+  # The only built-in signer whose certificates the API server accepts for
+  # client authentication.
+  signerName: kubernetes.io/kube-apiserver-client
+  # 90 days; the controller-manager caps it at --cluster-signing-duration.
+  expirationSeconds: 7776000
+  # Must be exactly "client auth" for this signer.
+  usages:
+    - client auth

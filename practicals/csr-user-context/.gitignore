@@ -1,0 +1,7 @@
+# Credentials for this lab live in ~/k8s-users, outside the repository.
+# These patterns are a second guard in case one is copied in by mistake:
+# a private key or a flattened kubeconfig (which embeds the key) is a secret.
+*.key
+*.kubeconfig
+*.crt
+*.token

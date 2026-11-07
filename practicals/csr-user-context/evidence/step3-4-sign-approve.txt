@@ -1,0 +1,36 @@
+$ kubectl apply -f $P2/manifests/01-csr-saroj.yaml
+certificatesigningrequest.certificates.k8s.io/saroj created
+
+$ kubectl get csr saroj
+NAME    AGE   SIGNERNAME                            REQUESTOR          REQUESTEDDURATION   CONDITION
+saroj   0s    kubernetes.io/kube-apiserver-client   kubernetes-admin   90d                 Pending
+
+$ kubectl certificate approve saroj
+certificatesigningrequest.certificates.k8s.io/saroj approved
+
+$ kubectl get csr saroj
+NAME    AGE   SIGNERNAME                            REQUESTOR          REQUESTEDDURATION   CONDITION
+saroj   2s    kubernetes.io/kube-apiserver-client   kubernetes-admin   90d                 Approved,Issued
+
+$ kubectl get csr saroj -o jsonpath='{.status.certificate}' | base64 -d > saroj.crt
+
+$ openssl x509 -in saroj.crt -noout -subject -issuer -dates
+subject=O=dev-team, CN=saroj
+issuer=CN=kubernetes
+notBefore=Nov  7 17:11:53 2026 GMT
+notAfter=Feb  5 17:11:53 2027 GMT
+
+$ openssl x509 -in saroj.crt -noout -ext extendedKeyUsage,keyUsage
+X509v3 Extended Key Usage: 
+    TLS Web Client Authentication
+
+$ docker exec dso202-control-plane cat /etc/kubernetes/pki/ca.crt > cluster-ca.crt; openssl verify -CAfile cluster-ca.crt saroj.crt
+saroj.crt: OK
+
+$ diff <(openssl x509 -in saroj.crt -noout -pubkey) <(openssl rsa -in saroj.key -pubout 2>/dev/null) && echo "certificate public key matches saroj.key"
+certificate public key matches saroj.key
+
+$ docker exec dso202-control-plane grep -E 'cluster-signing' /etc/kubernetes/manifests/kube-controller-manager.yaml
+    - --cluster-signing-cert-file=/etc/kubernetes/pki/ca.crt
+    - --cluster-signing-key-file=/etc/kubernetes/pki/ca.key
+

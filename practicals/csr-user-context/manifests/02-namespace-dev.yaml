@@ -1,0 +1,6 @@
+# 02-namespace-dev.yaml - the namespace saroj is allowed to work in.
+# Declarative equivalent of: kubectl create namespace dev
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev

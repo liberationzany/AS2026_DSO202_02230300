@@ -1,0 +1,69 @@
+# A) usages contains server auth as well as client auth
+$ grep -A1 -E 'signerName|usages' C:/Users/zeroe/k8s-users/bad-usages.yaml
+  name: bad-usages
+spec:
+--
+  signerName: kubernetes.io/kube-apiserver-client
+  expirationSeconds: 7776000
+  usages: ["client auth", "server auth"]
+
+$ kubectl apply -f C:/Users/zeroe/k8s-users/bad-usages.yaml && kubectl certificate approve bad-usages
+certificatesigningrequest.certificates.k8s.io/bad-usages created
+certificatesigningrequest.certificates.k8s.io/bad-usages approved
+
+$ kubectl get csr bad-usages
+NAME         AGE   SIGNERNAME                            REQUESTOR          REQUESTEDDURATION   CONDITION
+bad-usages   3s    kubernetes.io/kube-apiserver-client   kubernetes-admin   90d                 Approved,Failed
+
+$ kubectl get csr bad-usages -o jsonpath='{range .status.conditions[*]}{.type}={.status} reason={.reason} msg={.message}{"\n"}{end}'
+Approved=True reason=KubectlApprove msg=This CSR was approved by kubectl certificate approve.
+Failed=True reason=SignerValidationFailure msg=invalid usage for client certificate: server auth
+
+$ kubectl get csr bad-usages -o jsonpath='{.status.certificate}' | wc -c
+0
+
+# B) a custom signer name nobody implements
+$ kubectl apply -f C:/Users/zeroe/k8s-users/bad-signer.yaml && kubectl certificate approve bad-signer
+certificatesigningrequest.certificates.k8s.io/bad-signer created
+certificatesigningrequest.certificates.k8s.io/bad-signer approved
+
+$ kubectl get csr bad-signer
+NAME         AGE   SIGNERNAME              REQUESTOR          REQUESTEDDURATION   CONDITION
+bad-signer   5s    example.com/my-signer   kubernetes-admin   90d                 Approved
+
+# C) a context pointing at the wrong cluster entry
+$ kubectl config set-context saroj-wrong-cluster --cluster=kind-kind --user=saroj --namespace=dev
+Context "saroj-wrong-cluster" created.
+
+$ kubectl --context saroj-wrong-cluster get pods --request-timeout=5s
+E1107 23:18:49.240745   20864 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"https://127.0.0.1:64534/api?timeout=5s\": dial tcp 127.0.0.1:64534: connectex: No connection could be made because the target machine actively refused it."
+E1107 23:18:49.242306   20864 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"https://127.0.0.1:64534/api?timeout=5s\": dial tcp 127.0.0.1:64534: connectex: No connection could be made because the target machine actively refused it."
+E1107 23:18:49.243331   20864 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"https://127.0.0.1:64534/api?timeout=5s\": dial tcp 127.0.0.1:64534: connectex: No connection could be made because the target machine actively refused it."
+E1107 23:18:49.243846   20864 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"https://127.0.0.1:64534/api?timeout=5s\": dial tcp 127.0.0.1:64534: connectex: No connection could be made because the target machine actively refused it."
+E1107 23:18:49.245303   20864 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"https://127.0.0.1:64534/api?timeout=5s\": dial tcp 127.0.0.1:64534: connectex: No connection could be made because the target machine actively refused it."
+Unable to connect to the server: dial tcp 127.0.0.1:64534: connectex: No connection could be made because the target machine actively refused it.
+
+$ kubectl config set-context saroj-typo --cluster=kind-dso2O2 --user=saroj --namespace=dev
+Context "saroj-typo" created.
+
+$ kubectl --context saroj-typo get pods --request-timeout=5s
+E1107 23:18:49.578529    9828 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"http://localhost:8080/api?timeout=5s\": dial tcp [::1]:8080: connectex: No connection could be made because the target machine actively refused it."
+E1107 23:18:49.582352    9828 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"http://localhost:8080/api?timeout=5s\": dial tcp [::1]:8080: connectex: No connection could be made because the target machine actively refused it."
+E1107 23:18:49.583359    9828 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"http://localhost:8080/api?timeout=5s\": dial tcp [::1]:8080: connectex: No connection could be made because the target machine actively refused it."
+E1107 23:18:49.583359    9828 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"http://localhost:8080/api?timeout=5s\": dial tcp [::1]:8080: connectex: No connection could be made because the target machine actively refused it."
+E1107 23:18:49.586084    9828 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"http://localhost:8080/api?timeout=5s\": dial tcp [::1]:8080: connectex: No connection could be made because the target machine actively refused it."
+Unable to connect to the server: dial tcp [::1]:8080: connectex: No connection could be made because the target machine actively refused it.
+
+$ kubectl config delete-context saroj-wrong-cluster; kubectl config delete-context saroj-typo
+deleted context saroj-wrong-cluster from C:\Users\zeroe\.kube\config
+deleted context saroj-typo from C:\Users\zeroe\.kube\config
+
+# D) a certificate presented with the wrong private key
+$ kubectl --context kind-dso202 --client-certificate=C:/Users/zeroe/k8s-users/saroj.crt --client-key=C:/Users/zeroe/k8s-users/pema.key auth whoami
+E1107 23:18:49.997214   10428 cert_rotation.go:172] "Loading client cert failed" err="tls: private key does not match public key" key="key"
+Unable to connect to the server: tls: private key does not match public key
+
+$ kubectl delete csr bad-usages bad-signer
+certificatesigningrequest.certificates.k8s.io "bad-usages" deleted
+certificatesigningrequest.certificates.k8s.io "bad-signer" deleted
+

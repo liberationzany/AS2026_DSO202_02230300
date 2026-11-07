@@ -1,0 +1,18 @@
+# 05-rolebinding-dev-team.yaml - (extension) bind the same Role to a GROUP.
+# Any certificate whose subject carries O=dev-team now gets pod-manager in
+# "dev", with no per-user binding. Declarative equivalent of:
+#   kubectl create rolebinding dev-team-pod-manager --namespace=dev \
+#     --role=pod-manager --group=dev-team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dev-team-pod-manager
+  namespace: dev
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: pod-manager
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: dev-team

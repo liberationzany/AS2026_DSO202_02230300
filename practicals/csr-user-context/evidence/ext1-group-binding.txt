@@ -1,0 +1,46 @@
+$ kubectl auth can-i list pods -n dev --as=saroj                         # user binding
+yes
+
+$ kubectl auth can-i list pods -n dev --as=anyuser --as-group=dev-team   # no group binding yet
+no
+
+$ kubectl apply -f $P2/manifests/05-rolebinding-dev-team.yaml
+rolebinding.rbac.authorization.k8s.io/dev-team-pod-manager created
+
+$ kubectl auth can-i list pods -n dev --as=anyuser --as-group=dev-team   # group binding
+yes
+
+$ kubectl auth can-i list pods -n dev --as=anyuser --as-group=qa-team
+no
+
+# A second, real user who has NO user binding - only O=dev-team in the certificate
+$ openssl genrsa -out pema.key 2048 2>/dev/null && openssl req -new -key pema.key -out pema.csr -subj "/CN=pema/O=dev-team" && openssl req -in pema.csr -noout -subject
+subject=CN=pema, O=dev-team
+
+$ kubectl apply -f C:/Users/zeroe/k8s-users/csr-pema.yaml && kubectl certificate approve pema
+certificatesigningrequest.certificates.k8s.io/pema created
+certificatesigningrequest.certificates.k8s.io/pema approved
+
+$ kubectl get csr pema && kubectl get csr pema -o jsonpath='{.status.certificate}' | base64 -d > pema.crt && openssl x509 -in pema.crt -noout -subject -enddate
+NAME   AGE   SIGNERNAME                            REQUESTOR          REQUESTEDDURATION   CONDITION
+pema   2s    kubernetes.io/kube-apiserver-client   kubernetes-admin   24h                 Approved,Issued
+subject=O=dev-team, CN=pema
+notAfter=Nov  8 17:13:29 2026 GMT
+
+$ kubectl --context kind-dso202 --client-certificate=C:/Users/zeroe/k8s-users/pema.crt --client-key=C:/Users/zeroe/k8s-users/pema.key auth whoami
+ATTRIBUTE                                           VALUE
+Username                                            pema
+Groups                                              [dev-team system:authenticated]
+Extra: authentication.kubernetes.io/credential-id   [X509SHA256=74a3c0c72fa6a3a27b279ea78265552eb26aab19e5c8e9d0331624afcff26f0f]
+
+$ kubectl --context kind-dso202 --client-certificate=C:/Users/zeroe/k8s-users/pema.crt --client-key=C:/Users/zeroe/k8s-users/pema.key get pods -n dev
+No resources found in dev namespace.
+
+$ kubectl --context kind-dso202 --client-certificate=C:/Users/zeroe/k8s-users/pema.crt --client-key=C:/Users/zeroe/k8s-users/pema.key get pods -n default
+Error from server (Forbidden): pods is forbidden: User "pema" cannot list resource "pods" in API group "" in the namespace "default"
+
+$ kubectl get rolebindings -n dev -o wide
+NAME                   ROLE               AGE   USERS   GROUPS     SERVICEACCOUNTS
+dev-team-pod-manager   Role/pod-manager   4s            dev-team   
+saroj-pod-manager      Role/pod-manager   70s   saroj              
+

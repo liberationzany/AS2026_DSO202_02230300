@@ -1,0 +1,95 @@
+$ kubectl config use-context saroj-dev
+Switched to context "saroj-dev".
+
+$ kubectl config current-context
+saroj-dev
+
+$ kubectl auth whoami
+ATTRIBUTE                                           VALUE
+Username                                            saroj
+Groups                                              [dev-team system:authenticated]
+Extra: authentication.kubernetes.io/credential-id   [X509SHA256=fa27f970dbcb89883d6513599e965d673b2b7f498efff5557a701935b8ce88c1]
+
+$ kubectl get pods                    # should work
+No resources found in dev namespace.
+
+$ kubectl get pods -n kube-system     # should be Forbidden
+Error from server (Forbidden): pods is forbidden: User "saroj" cannot list resource "pods" in API group "" in the namespace "kube-system"
+
+$ kubectl get nodes                   # should be Forbidden
+Error from server (Forbidden): nodes is forbidden: User "saroj" cannot list resource "nodes" in API group "" at the cluster scope
+
+# --- beyond the notes: exercising each verb the Role grants (and one it does not) ---
+$ kubectl create deployment hello --image=nginx:1.30-alpine
+deployment.apps/hello created
+
+$ kubectl rollout status deployment/hello --timeout=120s
+Waiting for deployment "hello" rollout to finish: 0 of 1 updated replicas are available...
+deployment "hello" successfully rolled out
+
+$ kubectl get deploy,pods
+NAME                    READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/hello   1/1     1            1           1s
+
+NAME                         READY   STATUS    RESTARTS   AGE
+pod/hello-68dff5bcb4-jdg9h   1/1     Running   0          1s
+
+$ kubectl logs deployment/hello --tail=3
+2026/11/07 17:18:07 [notice] 1#1: start worker process 39
+2026/11/07 17:18:07 [notice] 1#1: start worker process 40
+2026/11/07 17:18:07 [notice] 1#1: start worker process 41
+
+$ kubectl scale deployment hello --replicas=2      # no update/patch verb -> Forbidden
+Error from server (Forbidden): deployments.apps "hello" is forbidden: User "saroj" cannot patch resource "deployments/scale" in API group "apps" in the namespace "dev"
+
+$ kubectl get replicasets                          # not in the Role -> Forbidden
+Error from server (Forbidden): replicasets.apps is forbidden: User "saroj" cannot list resource "replicasets" in API group "apps" in the namespace "dev"
+
+$ kubectl exec deploy/hello -- nginx -v            # pods/exec not granted -> Forbidden
+error: unable to upgrade connection: pods "hello-68dff5bcb4-jdg9h" is forbidden: User "saroj" cannot create resource "pods/exec" in API group "" in the namespace "dev"
+
+$ kubectl get secrets                              # not granted -> Forbidden
+Error from server (Forbidden): secrets is forbidden: User "saroj" cannot list resource "secrets" in API group "" in the namespace "dev"
+
+$ kubectl delete deployment hello
+deployment.apps "hello" deleted from dev namespace
+
+$ kubectl config use-context kind-dso202
+Switched to context "kind-dso202".
+
+$ kubectl auth can-i list pods --namespace=dev --as=saroj
+yes
+
+$ kubectl auth can-i delete nodes --as=saroj
+Warning: resource 'nodes' is not namespace scoped
+
+no
+
+$ kubectl auth can-i list pods --namespace=dev --as=anyuser --as-group=dev-team
+no
+
+$ kubectl auth can-i --list --namespace=dev --as=saroj
+Resources                                       Non-Resource URLs   Resource Names   Verbs
+selfsubjectreviews.authentication.k8s.io        []                  []               [create]
+selfsubjectaccessreviews.authorization.k8s.io   []                  []               [create]
+selfsubjectrulesreviews.authorization.k8s.io    []                  []               [create]
+pods/log                                        []                  []               [get list watch create delete]
+pods                                            []                  []               [get list watch create delete]
+deployments.apps                                []                  []               [get list watch create delete]
+                                                [/api/*]            []               [get]
+                                                [/api]              []               [get]
+                                                [/apis/*]           []               [get]
+                                                [/apis]             []               [get]
+                                                [/healthz]          []               [get]
+                                                [/healthz]          []               [get]
+                                                [/livez]            []               [get]
+                                                [/livez]            []               [get]
+                                                [/openapi/*]        []               [get]
+                                                [/openapi]          []               [get]
+                                                [/readyz]           []               [get]
+                                                [/readyz]           []               [get]
+                                                [/version/]         []               [get]
+                                                [/version/]         []               [get]
+                                                [/version]          []               [get]
+                                                [/version]          []               [get]
+

@@ -1,0 +1,30 @@
+$ openssl version; kubectl version 2>/dev/null | head -2; kind version
+OpenSSL 3.5.6 7 Apr 2026 (Library: OpenSSL 3.5.6 7 Apr 2026)
+Client Version: v1.36.3
+Kustomize Version: v5.8.1
+kind v0.32.0 go1.26.5 windows/amd64
+
+$ kubectl config current-context
+kind-dso202
+
+$ kubectl config get-clusters
+NAME
+kind-dso202
+kind-kind
+arn:aws:eks:us-east-1:000000000000:cluster/usms-eks-cluster
+
+$ kubectl get nodes
+NAME            STATUS   ROLES           AGE   VERSION
+control-plane   Ready    control-plane   88d   v1.36.1
+worker-node-1   Ready    <none>          88d   v1.36.1
+worker-node-2   Ready    <none>          88d   v1.36.1
+
+$ kubectl auth whoami
+ATTRIBUTE                                           VALUE
+Username                                            kubernetes-admin
+Groups                                              [kubeadm:cluster-admins system:authenticated]
+Extra: authentication.kubernetes.io/credential-id   [X509SHA256=c0cc54fde7252d11112f87f54f29353b6aaced90ef35ad91e0c2aa4a85c8869c]
+
+$ kubectl get namespace dev
+Error from server (NotFound): namespaces "dev" not found
+

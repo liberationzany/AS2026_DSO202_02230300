@@ -1,0 +1,17 @@
+# 04-rolebinding-saroj.yaml - who gets the Role.
+# The User name must match the certificate's CN exactly ("saroj").
+# Kubernetes never checks that such a user "exists": a binding to a name is
+# just a string that an authenticated request may or may not carry.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: saroj-pod-manager
+  namespace: dev
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: pod-manager
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: User
+    name: saroj

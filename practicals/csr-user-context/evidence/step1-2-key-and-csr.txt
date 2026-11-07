@@ -1,0 +1,19 @@
+$ pwd
+/c/Users/zeroe/k8s-users
+
+$ openssl genrsa -out saroj.key 2048
+
+$ ls -l saroj.key
+-rw-r--r-- 1 zeroe 197609 1732 Nov  7 23:16 saroj.key
+
+$ openssl rsa -in saroj.key -noout -check
+RSA key ok
+
+$ openssl req -new -key saroj.key -out saroj.csr -subj "/CN=saroj/O=dev-team"
+
+$ openssl req -in saroj.csr -noout -subject
+subject=CN=saroj, O=dev-team
+
+$ openssl req -in saroj.csr -noout -verify
+Certificate request self-signature verify OK
+

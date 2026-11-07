@@ -1,0 +1,42 @@
+$ kubectl config current-context
+kind-dso202
+
+$ kubectl config get-contexts
+CURRENT   NAME          CLUSTER                                                       AUTHINFO                                                      NAMESPACE
+*         kind-dso202   kind-dso202                                                   kind-dso202                                                   dso202-operators
+          kind-kind     kind-kind                                                     kind-kind                                                     
+          saroj-dev     kind-dso202                                                   saroj                                                         dev
+          usms-eks      arn:aws:eks:us-east-1:000000000000:cluster/usms-eks-cluster   arn:aws:eks:us-east-1:000000000000:cluster/usms-eks-cluster   usms
+
+$ kubectl get csr
+No resources found
+
+$ kubectl get role,rolebinding,serviceaccount -n dev
+NAME                                         CREATED AT
+role.rbac.authorization.k8s.io/pod-manager   2026-11-07T17:17:21Z
+
+NAME                                                         ROLE               AGE
+rolebinding.rbac.authorization.k8s.io/dev-team-pod-manager   Role/pod-manager   72s
+rolebinding.rbac.authorization.k8s.io/saroj-pod-manager      Role/pod-manager   72s
+
+NAME                     AGE
+serviceaccount/default   2m59s
+
+$ kubectl --context saroj-dev get pods; kubectl --context saroj-dev get nodes
+No resources found in dev namespace.
+Error from server (Forbidden): nodes is forbidden: User "saroj" cannot list resource "nodes" in API group "" at the cluster scope
+
+$ ls ~/k8s-users | sed "s/^/  /"   # outside the repository; nothing here is committed
+  bad-signer.yaml
+  bad-usages.yaml
+  ca.crt
+  cluster-ca.crt
+  csr-pema.yaml
+  pema.crt
+  pema.csr
+  pema.key
+  saroj.crt
+  saroj.csr
+  saroj.key
+  saroj.kubeconfig
+

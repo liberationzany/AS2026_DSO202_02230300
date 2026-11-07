@@ -1,0 +1,19 @@
+# 03-role-pod-manager.yaml - what may be done, and only inside "dev".
+# Declarative equivalent of:
+#   kubectl create role pod-manager --namespace=dev \
+#     --verb=get,list,watch,create,delete --resource=pods,pods/log,deployments
+# kubectl split the resources by API group: pods are in the core group (""),
+# deployments in "apps". There is no "update"/"patch", so saroj cannot scale
+# or edit a Deployment, only create and delete it.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pod-manager
+  namespace: dev
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "create", "delete"]
