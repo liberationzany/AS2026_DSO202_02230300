@@ -1,0 +1,93 @@
+$ kind create cluster --config cluster/kind-cluster.yaml
+Creating cluster "dso202-p2" ...
+ • Ensuring node image (kindest/node:v1.36.1) 🖼  ...
+ ✓ Ensuring node image (kindest/node:v1.36.1) 🖼
+ • Preparing nodes 📦 📦 📦   ...
+ ✓ Preparing nodes 📦 📦 📦 
+ • Writing configuration 📜  ...
+ ✓ Writing configuration 📜
+ • Starting control-plane 🕹️  ...
+ ✓ Starting control-plane 🕹️
+ • Installing CNI 🔌  ...
+ ✓ Installing CNI 🔌
+ • Installing StorageClass 💾  ...
+ ✓ Installing StorageClass 💾
+ • Joining worker nodes 🚜  ...
+ ✓ Joining worker nodes 🚜
+Set kubectl context to "kind-dso202-p2"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-dso202-p2
+
+Have a question, bug, or feature request? Let us know! https://kind.sigs.k8s.io/#community 🙂
+
+$ kubectl config current-context
+kind-dso202-p2
+
+$ kubectl get nodes -o wide
+NAME            STATUS   ROLES           AGE   VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE                       KERNEL-VERSION                             CONTAINER-RUNTIME
+control-plane   Ready    control-plane   49s   v1.36.1   172.20.0.8    <none>        Debian GNU/Linux 13 (trixie)   6.6.87.2-microsoft-standard-WSL2 (amd64)   containerd://2.3.1
+worker-node-1   Ready    <none>          37s   v1.36.1   172.20.0.9    <none>        Debian GNU/Linux 13 (trixie)   6.6.87.2-microsoft-standard-WSL2 (amd64)   containerd://2.3.1
+worker-node-2   Ready    <none>          37s   v1.36.1   172.20.0.10   <none>        Debian GNU/Linux 13 (trixie)   6.6.87.2-microsoft-standard-WSL2 (amd64)   containerd://2.3.1
+
+$ kubectl get nodes -L dso202/node-index
+NAME            STATUS   ROLES           AGE   VERSION   NODE-INDEX
+control-plane   Ready    control-plane   49s   v1.36.1   
+worker-node-1   Ready    <none>          37s   v1.36.1   1
+worker-node-2   Ready    <none>          37s   v1.36.1   2
+
+$ docker ps --filter name=dso202-p2 --format 'table {{.Names}}\t{{.Status}}'
+NAMES                     STATUS
+dso202-p2-control-plane   Up About a minute
+dso202-p2-worker2         Up About a minute
+dso202-p2-worker          Up About a minute
+
+$ docker exec dso202-p2-worker ls -ld /mnt/dso202-static
+drwxrwxrwx 1 root root 512 Nov  7 14:24 /mnt/dso202-static
+
+$ kubectl apply -f manifests/00-namespace.yaml
+namespace/dso202-practical-02 created
+
+$ kubectl config set-context --current --namespace=dso202-practical-02
+Context "kind-dso202-p2" modified.
+
+$ kubectl apply -f manifests/01-quota-and-limits.yaml
+resourcequota/dso202-p2-quota created
+limitrange/dso202-p2-limits created
+
+$ kubectl apply -f manifests/02-storageclass-retain.yaml
+storageclass.storage.k8s.io/dso202-retain created
+
+$ kubectl describe resourcequota dso202-p2-quota
+Name:                                                             dso202-p2-quota
+Namespace:                                                        dso202-practical-02
+Resource                                                          Used  Hard
+--------                                                          ----  ----
+dso202-retain.storageclass.storage.k8s.io/persistentvolumeclaims  0     4
+limits.cpu                                                        0     4
+limits.memory                                                     0     6Gi
+persistentvolumeclaims                                            0     12
+pods                                                              0     20
+requests.cpu                                                      0     2
+requests.memory                                                   0     4Gi
+requests.storage                                                  0     20Gi
+standard.storageclass.storage.k8s.io/requests.storage             0     12Gi
+
+$ kubectl get storageclass
+NAME                 PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
+dso202-retain        rancher.io/local-path   Retain          WaitForFirstConsumer   false                  1s
+standard (default)   rancher.io/local-path   Delete          WaitForFirstConsumer   false                  47s
+
+$ kubectl -n local-path-storage get pods
+NAME                                      READY   STATUS    RESTARTS   AGE
+local-path-provisioner-855c7b7774-f7bvh   1/1     Running   0          41s
+
+$ kubectl -n local-path-storage get configmap local-path-config -o jsonpath='{.data.config\.json}'
+{
+        "nodePathMap":[
+        {
+                "node":"DEFAULT_PATH_FOR_NON_LISTED_NODES",
+                "paths":["/var/local-path-provisioner"]
+        }
+        ]
+}

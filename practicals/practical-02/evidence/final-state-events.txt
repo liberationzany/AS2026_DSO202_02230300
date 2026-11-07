@@ -1,0 +1,217 @@
+LAST SEEN   TYPE      REASON                  OBJECT                                    MESSAGE
+15m         Normal    Scheduled               pod/static-writer                         Successfully assigned dso202-practical-02/static-writer to worker-node-1
+15m         Normal    Pulling                 pod/static-writer                         Pulling image "busybox:1.37"
+15m         Normal    Pulled                  pod/static-writer                         Successfully pulled image "busybox:1.37" in 11.397s (11.397s including waiting). Image size: 2222118 bytes.
+15m         Normal    Created                 pod/static-writer                         Container created
+15m         Normal    Started                 pod/static-writer                         Container started
+15m         Normal    Killing                 pod/static-writer                         Stopping container writer
+15m         Normal    Scheduled               pod/static-writer                         Successfully assigned dso202-practical-02/static-writer to worker-node-1
+15m         Normal    Pulled                  pod/static-writer                         Container image "busybox:1.37" already present on machine and can be accessed by the pod
+15m         Normal    Created                 pod/static-writer                         Container created
+15m         Normal    Started                 pod/static-writer                         Container started
+14m         Normal    Killing                 pod/static-writer                         Stopping container writer
+14m         Normal    Scheduled               pod/static-writer                         Successfully assigned dso202-practical-02/static-writer to worker-node-1
+14m         Normal    Started                 pod/static-writer                         Container started
+14m         Normal    Created                 pod/static-writer                         Container created
+14m         Normal    Pulled                  pod/static-writer                         Container image "busybox:1.37" already present on machine and can be accessed by the pod
+14m         Normal    WaitForFirstConsumer    persistentvolumeclaim/dynamic-data        waiting for first consumer to be created before binding
+14m         Normal    ExternalProvisioning    persistentvolumeclaim/dynamic-data        Waiting for a volume to be created either by the external provisioner 'rancher.io/local-path' or manually by the system administrator. If volume creation is delayed, please verify that the provisioner is running and correctly registered.
+14m         Normal    Provisioning            persistentvolumeclaim/dynamic-data        External provisioner is provisioning volume for claim "dso202-practical-02/dynamic-data"
+14m         Normal    ProvisioningSucceeded   persistentvolumeclaim/dynamic-data        Successfully provisioned volume pvc-54563f4e-7d76-40a6-9064-5013765a6f7a
+14m         Normal    Scheduled               pod/dynamic-writer                        Successfully assigned dso202-practical-02/dynamic-writer to worker-node-1
+14m         Normal    Started                 pod/dynamic-writer                        Container started
+14m         Normal    Created                 pod/dynamic-writer                        Container created
+14m         Normal    Pulled                  pod/dynamic-writer                        Container image "busybox:1.37" already present on machine and can be accessed by the pod
+14m         Normal    Killing                 pod/dynamic-writer                        Stopping container writer
+14m         Normal    WaitForFirstConsumer    persistentvolumeclaim/shared-data         waiting for first consumer to be created before binding
+14m         Warning   FailedScheduling        pod/shared-writer-6f4b987c7b-qm7fc        running PreBind plugin "VolumeBinding": Operation cannot be fulfilled on persistentvolumeclaims "shared-data": the object has been modified; please apply your changes to the latest version and try again
+14m         Warning   FailedScheduling        pod/shared-writer-6f4b987c7b-b2cw6        running PreBind plugin "VolumeBinding": Operation cannot be fulfilled on persistentvolumeclaims "shared-data": the object has been modified; please apply your changes to the latest version and try again
+14m         Normal    Provisioning            persistentvolumeclaim/shared-data         External provisioner is provisioning volume for claim "dso202-practical-02/shared-data"
+14m         Normal    ExternalProvisioning    persistentvolumeclaim/shared-data         Waiting for a volume to be created either by the external provisioner 'rancher.io/local-path' or manually by the system administrator. If volume creation is delayed, please verify that the provisioner is running and correctly registered.
+14m         Normal    ScalingReplicaSet       deployment/shared-writer                  Scaled up replica set shared-writer-6f4b987c7b from 0 to 3
+14m         Normal    SuccessfulCreate        replicaset/shared-writer-6f4b987c7b       Created pod: shared-writer-6f4b987c7b-28znw
+14m         Normal    SuccessfulCreate        replicaset/shared-writer-6f4b987c7b       Created pod: shared-writer-6f4b987c7b-qm7fc
+14m         Normal    SuccessfulCreate        replicaset/shared-writer-6f4b987c7b       Created pod: shared-writer-6f4b987c7b-b2cw6
+13m         Normal    Created                 pod/shared-writer-6f4b987c7b-b2cw6        Container created
+13m         Normal    Scheduled               pod/shared-writer-6f4b987c7b-b2cw6        Successfully assigned dso202-practical-02/shared-writer-6f4b987c7b-b2cw6 to worker-node-1
+13m         Normal    Scheduled               pod/shared-writer-6f4b987c7b-qm7fc        Successfully assigned dso202-practical-02/shared-writer-6f4b987c7b-qm7fc to worker-node-1
+13m         Normal    Pulled                  pod/shared-writer-6f4b987c7b-qm7fc        Container image "busybox:1.37" already present on machine and can be accessed by the pod
+13m         Normal    Pulled                  pod/shared-writer-6f4b987c7b-b2cw6        Container image "busybox:1.37" already present on machine and can be accessed by the pod
+13m         Normal    Scheduled               pod/shared-writer-6f4b987c7b-28znw        Successfully assigned dso202-practical-02/shared-writer-6f4b987c7b-28znw to worker-node-1
+13m         Normal    ProvisioningSucceeded   persistentvolumeclaim/shared-data         Successfully provisioned volume pvc-567a1b6a-e86d-4da5-929e-5b4770eb0c51
+13m         Normal    Created                 pod/shared-writer-6f4b987c7b-qm7fc        Container created
+13m         Normal    Pulled                  pod/shared-writer-6f4b987c7b-28znw        Container image "busybox:1.37" already present on machine and can be accessed by the pod
+13m         Normal    Started                 pod/shared-writer-6f4b987c7b-b2cw6        Container started
+13m         Normal    Started                 pod/shared-writer-6f4b987c7b-qm7fc        Container started
+13m         Normal    Started                 pod/shared-writer-6f4b987c7b-28znw        Container started
+13m         Normal    Created                 pod/shared-writer-6f4b987c7b-28znw        Container created
+13m         Normal    SuccessfulCreate        replicaset/shared-writer-6f4b987c7b       Created pod: shared-writer-6f4b987c7b-pxcgj
+13m         Normal    Scheduled               pod/shared-writer-6f4b987c7b-j7zws        Successfully assigned dso202-practical-02/shared-writer-6f4b987c7b-j7zws to worker-node-1
+13m         Normal    Scheduled               pod/shared-writer-6f4b987c7b-d9zsf        Successfully assigned dso202-practical-02/shared-writer-6f4b987c7b-d9zsf to worker-node-1
+13m         Normal    SuccessfulCreate        replicaset/shared-writer-6f4b987c7b       Created pod: shared-writer-6f4b987c7b-d9zsf
+13m         Normal    Killing                 pod/shared-writer-6f4b987c7b-b2cw6        Stopping container writer
+13m         Normal    Scheduled               pod/shared-writer-6f4b987c7b-pxcgj        Successfully assigned dso202-practical-02/shared-writer-6f4b987c7b-pxcgj to worker-node-1
+13m         Normal    Killing                 pod/shared-writer-6f4b987c7b-qm7fc        Stopping container writer
+13m         Normal    SuccessfulCreate        replicaset/shared-writer-6f4b987c7b       Created pod: shared-writer-6f4b987c7b-j7zws
+13m         Normal    Pulled                  pod/shared-writer-6f4b987c7b-j7zws        Container image "busybox:1.37" already present on machine and can be accessed by the pod
+13m         Normal    Created                 pod/shared-writer-6f4b987c7b-j7zws        Container created
+13m         Normal    Pulled                  pod/shared-writer-6f4b987c7b-pxcgj        Container image "busybox:1.37" already present on machine and can be accessed by the pod
+13m         Normal    Killing                 pod/shared-writer-6f4b987c7b-28znw        Stopping container writer
+13m         Normal    Created                 pod/shared-writer-6f4b987c7b-pxcgj        Container created
+13m         Normal    Started                 pod/shared-writer-6f4b987c7b-j7zws        Container started
+13m         Normal    Started                 pod/shared-writer-6f4b987c7b-pxcgj        Container started
+13m         Normal    Pulled                  pod/shared-writer-6f4b987c7b-d9zsf        Container image "busybox:1.37" already present on machine and can be accessed by the pod
+13m         Normal    Created                 pod/shared-writer-6f4b987c7b-d9zsf        Container created
+13m         Normal    Started                 pod/shared-writer-6f4b987c7b-d9zsf        Container started
+13m         Normal    Killing                 pod/shared-writer-6f4b987c7b-d9zsf        Stopping container writer
+13m         Normal    Killing                 pod/shared-writer-6f4b987c7b-j7zws        Stopping container writer
+13m         Normal    Killing                 pod/shared-writer-6f4b987c7b-pxcgj        Stopping container writer
+13m         Normal    WaitForFirstConsumer    persistentvolumeclaim/content-webnote-0   waiting for first consumer to be created before binding
+13m         Normal    ExternalProvisioning    persistentvolumeclaim/content-webnote-0   Waiting for a volume to be created either by the external provisioner 'rancher.io/local-path' or manually by the system administrator. If volume creation is delayed, please verify that the provisioner is running and correctly registered.
+13m         Normal    Provisioning            persistentvolumeclaim/content-webnote-0   External provisioner is provisioning volume for claim "dso202-practical-02/content-webnote-0"
+13m         Normal    SuccessfulCreate        statefulset/webnote                       Create Claim content-webnote-0 Pod webnote-0 in StatefulSet webnote success
+13m         Normal    ProvisioningSucceeded   persistentvolumeclaim/content-webnote-0   Successfully provisioned volume pvc-4c9177fa-0b03-48c9-ab06-6b41d34d5e7e
+13m         Normal    Scheduled               pod/webnote-0                             Successfully assigned dso202-practical-02/webnote-0 to worker-node-1
+13m         Normal    Pulling                 pod/webnote-0                             Pulling image "nginx:1.30-alpine"
+13m         Normal    Started                 pod/webnote-0                             Container started
+13m         Normal    Created                 pod/webnote-0                             Container created
+13m         Normal    Pulled                  pod/webnote-0                             Container image "busybox:1.37" already present on machine and can be accessed by the pod
+12m         Normal    Pulled                  pod/webnote-0                             Successfully pulled image "nginx:1.30-alpine" in 37.12s (37.12s including waiting). Image size: 26088468 bytes.
+12m         Normal    Created                 pod/webnote-0                             Container created
+12m         Normal    Started                 pod/webnote-0                             Container started
+12m         Normal    WaitForFirstConsumer    persistentvolumeclaim/content-webnote-1   waiting for first consumer to be created before binding
+12m         Normal    ExternalProvisioning    persistentvolumeclaim/content-webnote-1   Waiting for a volume to be created either by the external provisioner 'rancher.io/local-path' or manually by the system administrator. If volume creation is delayed, please verify that the provisioner is running and correctly registered.
+12m         Normal    Provisioning            persistentvolumeclaim/content-webnote-1   External provisioner is provisioning volume for claim "dso202-practical-02/content-webnote-1"
+12m         Normal    SuccessfulCreate        statefulset/webnote                       Create Claim content-webnote-1 Pod webnote-1 in StatefulSet webnote success
+12m         Normal    ProvisioningSucceeded   persistentvolumeclaim/content-webnote-1   Successfully provisioned volume pvc-fadb1b48-26e6-4aeb-9a01-9448c2791c1a
+12m         Normal    Scheduled               pod/webnote-1                             Successfully assigned dso202-practical-02/webnote-1 to worker-node-2
+12m         Normal    Pulling                 pod/webnote-1                             Pulling image "busybox:1.37"
+12m         Normal    Pulled                  pod/webnote-1                             Successfully pulled image "busybox:1.37" in 17.981s (17.981s including waiting). Image size: 2222118 bytes.
+12m         Normal    Created                 pod/webnote-1                             Container created
+12m         Normal    Started                 pod/webnote-1                             Container started
+12m         Normal    Pulling                 pod/webnote-1                             Pulling image "nginx:1.30-alpine"
+11m         Normal    Started                 pod/webnote-1                             Container started
+11m         Normal    Pulled                  pod/webnote-1                             Successfully pulled image "nginx:1.30-alpine" in 55.448s (55.448s including waiting). Image size: 26088468 bytes.
+11m         Normal    Created                 pod/webnote-1                             Container created
+10m         Normal    SuccessfulCreate        statefulset/webnote                       Create Claim content-webnote-2 Pod webnote-2 in StatefulSet webnote success
+10m         Normal    Provisioning            persistentvolumeclaim/content-webnote-2   External provisioner is provisioning volume for claim "dso202-practical-02/content-webnote-2"
+10m         Normal    ExternalProvisioning    persistentvolumeclaim/content-webnote-2   Waiting for a volume to be created either by the external provisioner 'rancher.io/local-path' or manually by the system administrator. If volume creation is delayed, please verify that the provisioner is running and correctly registered.
+10m         Normal    WaitForFirstConsumer    persistentvolumeclaim/content-webnote-2   waiting for first consumer to be created before binding
+10m         Normal    ProvisioningSucceeded   persistentvolumeclaim/content-webnote-2   Successfully provisioned volume pvc-9137ccac-ada3-47ca-806c-c6fbda2f5c2c
+10m         Normal    Started                 pod/webnote-2                             Container started
+10m         Normal    Created                 pod/webnote-2                             Container created
+10m         Normal    Scheduled               pod/webnote-2                             Successfully assigned dso202-practical-02/webnote-2 to worker-node-2
+10m         Normal    Pulled                  pod/webnote-2                             Container image "nginx:1.30-alpine" already present on machine and can be accessed by the pod
+10m         Normal    Started                 pod/webnote-2                             Container started
+10m         Normal    Created                 pod/webnote-2                             Container created
+10m         Normal    Pulled                  pod/webnote-2                             Container image "busybox:1.37" already present on machine and can be accessed by the pod
+10m         Normal    Scheduled               pod/client                                Successfully assigned dso202-practical-02/client to worker-node-1
+10m         Normal    Created                 pod/client                                Container created
+10m         Normal    Started                 pod/client                                Container started
+10m         Normal    Pulled                  pod/client                                Container image "busybox:1.37" already present on machine and can be accessed by the pod
+10m         Normal    Killing                 pod/webnote-1                             Stopping container nginx
+10m         Normal    Scheduled               pod/webnote-1                             Successfully assigned dso202-practical-02/webnote-1 to worker-node-2
+10m         Normal    Pulled                  pod/webnote-1                             Container image "busybox:1.37" already present on machine and can be accessed by the pod
+10m         Normal    Created                 pod/webnote-1                             Container created
+10m         Normal    Started                 pod/webnote-1                             Container started
+10m         Normal    Pulled                  pod/webnote-1                             Container image "nginx:1.30-alpine" already present on machine and can be accessed by the pod
+10m         Normal    Created                 pod/webnote-1                             Container created
+10m         Normal    Started                 pod/webnote-1                             Container started
+10m         Normal    WaitForFirstConsumer    persistentvolumeclaim/content-webnote-3   waiting for first consumer to be created before binding
+10m         Normal    SuccessfulCreate        statefulset/webnote                       Create Pod webnote-3 in StatefulSet webnote successful
+10m         Normal    SuccessfulCreate        statefulset/webnote                       Create Claim content-webnote-3 Pod webnote-3 in StatefulSet webnote success
+10m         Normal    Provisioning            persistentvolumeclaim/content-webnote-3   External provisioner is provisioning volume for claim "dso202-practical-02/content-webnote-3"
+10m         Normal    ExternalProvisioning    persistentvolumeclaim/content-webnote-3   Waiting for a volume to be created either by the external provisioner 'rancher.io/local-path' or manually by the system administrator. If volume creation is delayed, please verify that the provisioner is running and correctly registered.
+10m         Normal    ProvisioningSucceeded   persistentvolumeclaim/content-webnote-3   Successfully provisioned volume pvc-e111aec6-3b73-4493-9764-756709563c1f
+10m         Normal    Scheduled               pod/webnote-3                             Successfully assigned dso202-practical-02/webnote-3 to worker-node-1
+10m         Normal    Started                 pod/webnote-3                             Container started
+10m         Normal    Created                 pod/webnote-3                             Container created
+10m         Normal    Pulled                  pod/webnote-3                             Container image "busybox:1.37" already present on machine and can be accessed by the pod
+10m         Normal    Started                 pod/webnote-3                             Container started
+10m         Normal    Pulled                  pod/webnote-3                             Container image "nginx:1.30-alpine" already present on machine and can be accessed by the pod
+10m         Normal    Created                 pod/webnote-3                             Container created
+10m         Normal    SuccessfulDelete        statefulset/webnote                       Delete Pod webnote-3 in StatefulSet webnote successful
+10m         Normal    Killing                 pod/webnote-3                             Stopping container nginx
+9m59s       Normal    Killing                 pod/webnote-2                             Stopping container nginx
+8m59s       Normal    Scheduled               pod/webnote-2                             Successfully assigned dso202-practical-02/webnote-2 to worker-node-2
+8m58s       Normal    Pulled                  pod/webnote-2                             Container image "busybox:1.37" already present on machine and can be accessed by the pod
+8m58s       Normal    Created                 pod/webnote-2                             Container created
+8m58s       Normal    Started                 pod/webnote-2                             Container started
+8m58s       Normal    Pulled                  pod/webnote-2                             Container image "nginx:1.30-alpine" already present on machine and can be accessed by the pod
+8m58s       Normal    Created                 pod/webnote-2                             Container created
+8m58s       Normal    Started                 pod/webnote-2                             Container started
+8m41s       Normal    Killing                 pod/webnote-2                             Stopping container nginx
+8m41s       Normal    SuccessfulDelete        statefulset/webnote                       Delete Pod webnote-2 in StatefulSet webnote successful
+8m40s       Normal    SuccessfulCreate        statefulset/webnote                       Create Pod webnote-2 in StatefulSet webnote successful
+8m40s       Normal    Scheduled               pod/webnote-2                             Successfully assigned dso202-practical-02/webnote-2 to worker-node-2
+8m39s       Normal    Pulled                  pod/webnote-2                             Container image "busybox:1.37" already present on machine and can be accessed by the pod
+8m39s       Normal    Started                 pod/webnote-2                             Container started
+8m39s       Normal    Created                 pod/webnote-2                             Container created
+8m39s       Normal    Pulling                 pod/webnote-2                             Pulling image "nginx:1.31-alpine"
+8m8s        Normal    Created                 pod/webnote-2                             Container created
+8m8s        Normal    Pulled                  pod/webnote-2                             Successfully pulled image "nginx:1.31-alpine" in 27.846s (27.846s including waiting). Image size: 26368486 bytes.
+8m8s        Normal    Started                 pod/webnote-2                             Container started
+7m52s       Normal    Killing                 pod/webnote-1                             Stopping container nginx
+7m52s       Normal    SuccessfulDelete        statefulset/webnote                       Delete Pod webnote-1 in StatefulSet webnote successful
+7m51s       Normal    Scheduled               pod/webnote-1                             Successfully assigned dso202-practical-02/webnote-1 to worker-node-2
+7m51s       Normal    Pulled                  pod/webnote-1                             Container image "busybox:1.37" already present on machine and can be accessed by the pod
+7m51s       Normal    SuccessfulCreate        statefulset/webnote                       Create Pod webnote-1 in StatefulSet webnote successful
+7m50s       Normal    Started                 pod/webnote-1                             Container started
+7m50s       Normal    Created                 pod/webnote-1                             Container created
+7m50s       Normal    Started                 pod/webnote-1                             Container started
+7m50s       Normal    Pulled                  pod/webnote-1                             Container image "nginx:1.31-alpine" already present on machine and can be accessed by the pod
+7m50s       Normal    Created                 pod/webnote-1                             Container created
+7m39s       Normal    Scheduled               pod/webnote-0                             Successfully assigned dso202-practical-02/webnote-0 to worker-node-1
+7m39s       Normal    SuccessfulCreate        statefulset/webnote                       Create Pod webnote-0 in StatefulSet webnote successful
+7m39s       Normal    SuccessfulDelete        statefulset/webnote                       Delete Pod webnote-0 in StatefulSet webnote successful
+7m39s       Normal    Killing                 pod/webnote-0                             Stopping container nginx
+7m38s       Normal    Created                 pod/webnote-0                             Container created
+7m38s       Normal    Pulling                 pod/webnote-0                             Pulling image "nginx:1.31-alpine"
+7m38s       Normal    Pulled                  pod/webnote-0                             Container image "busybox:1.37" already present on machine and can be accessed by the pod
+7m38s       Normal    Started                 pod/webnote-0                             Container started
+6m54s       Normal    Pulled                  pod/webnote-0                             Successfully pulled image "nginx:1.31-alpine" in 38.595s (38.595s including waiting). Image size: 26368486 bytes.
+6m54s       Normal    Created                 pod/webnote-0                             Container created
+6m54s       Normal    Started                 pod/webnote-0                             Container started
+6m48s       Normal    Killing                 pod/webnote-2                             Stopping container nginx
+6m48s       Normal    Killing                 pod/webnote-1                             Stopping container nginx
+6m48s       Normal    Killing                 pod/webnote-0                             Stopping container nginx
+6m34s       Normal    Scheduled               pod/webnote-0                             Successfully assigned dso202-practical-02/webnote-0 to worker-node-1
+6m34s       Normal    SuccessfulCreate        statefulset/webnote                       Create Pod webnote-0 in StatefulSet webnote successful
+6m33s       Normal    Pulled                  pod/webnote-0                             Container image "busybox:1.37" already present on machine and can be accessed by the pod
+6m33s       Normal    Created                 pod/webnote-0                             Container created
+6m33s       Normal    Started                 pod/webnote-0                             Container started
+6m32s       Normal    Created                 pod/webnote-0                             Container created
+6m32s       Normal    Started                 pod/webnote-0                             Container started
+6m32s       Normal    Pulled                  pod/webnote-0                             Container image "nginx:1.31-alpine" already present on machine and can be accessed by the pod
+6m19s       Normal    SuccessfulCreate        statefulset/webnote                       Create Pod webnote-1 in StatefulSet webnote successful
+6m19s       Normal    Scheduled               pod/webnote-1                             Successfully assigned dso202-practical-02/webnote-1 to worker-node-2
+6m18s       Normal    Pulled                  pod/webnote-1                             Container image "nginx:1.31-alpine" already present on machine and can be accessed by the pod
+6m18s       Normal    Pulled                  pod/webnote-1                             Container image "busybox:1.37" already present on machine and can be accessed by the pod
+6m18s       Normal    Created                 pod/webnote-1                             Container created
+6m18s       Normal    Started                 pod/webnote-1                             Container started
+6m18s       Normal    Created                 pod/webnote-1                             Container created
+6m18s       Normal    Started                 pod/webnote-1                             Container started
+6m7s        Normal    Started                 pod/webnote-2                             Container started
+6m7s        Normal    Created                 pod/webnote-2                             Container created
+6m7s        Normal    Pulled                  pod/webnote-2                             Container image "nginx:1.31-alpine" already present on machine and can be accessed by the pod
+6m7s        Normal    Started                 pod/webnote-2                             Container started
+6m7s        Normal    Created                 pod/webnote-2                             Container created
+6m7s        Normal    Pulled                  pod/webnote-2                             Container image "busybox:1.37" already present on machine and can be accessed by the pod
+6m7s        Normal    Scheduled               pod/webnote-2                             Successfully assigned dso202-practical-02/webnote-2 to worker-node-2
+6m7s        Normal    SuccessfulCreate        statefulset/webnote                       Create Pod webnote-2 in StatefulSet webnote successful
+5m52s       Normal    WaitForFirstConsumer    persistentvolumeclaim/data-postgres-0     waiting for first consumer to be created before binding
+5m52s       Normal    ExternalProvisioning    persistentvolumeclaim/data-postgres-0     Waiting for a volume to be created either by the external provisioner 'rancher.io/local-path' or manually by the system administrator. If volume creation is delayed, please verify that the provisioner is running and correctly registered.
+5m52s       Normal    Provisioning            persistentvolumeclaim/data-postgres-0     External provisioner is provisioning volume for claim "dso202-practical-02/data-postgres-0"
+5m52s       Normal    SuccessfulCreate        statefulset/postgres                      Create Claim data-postgres-0 Pod postgres-0 in StatefulSet postgres success
+5m47s       Normal    ProvisioningSucceeded   persistentvolumeclaim/data-postgres-0     Successfully provisioned volume pvc-ed0f35ee-ced9-4523-8f1f-e517b8293790
+5m46s       Normal    Pulling                 pod/postgres-0                            Pulling image "postgres:18-alpine"
+5m46s       Normal    Scheduled               pod/postgres-0                            Successfully assigned dso202-practical-02/postgres-0 to worker-node-1
+49s         Normal    Started                 pod/postgres-0                            Container started
+49s         Normal    Created                 pod/postgres-0                            Container created
+49s         Normal    Pulled                  pod/postgres-0                            Successfully pulled image "postgres:18-alpine" in 4m38.725s (4m38.725s including waiting). Image size: 120090937 bytes.
+26s         Normal    Killing                 pod/postgres-0                            Stopping container postgres
+25s         Normal    Scheduled               pod/postgres-0                            Successfully assigned dso202-practical-02/postgres-0 to worker-node-1
+25s         Normal    Pulled                  pod/postgres-0                            Container image "postgres:18-alpine" already present on machine and can be accessed by the pod
+25s         Normal    Created                 pod/postgres-0                            Container created
+25s         Normal    SuccessfulCreate        statefulset/postgres                      Create Pod postgres-0 in StatefulSet postgres successful
+24s         Normal    Started                 pod/postgres-0                            Container started

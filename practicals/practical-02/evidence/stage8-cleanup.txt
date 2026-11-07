@@ -1,0 +1,82 @@
+$ kubectl diff -f manifests/00-namespace.yaml -f manifests/01-quota-and-limits.yaml -f manifests/02-storageclass-retain.yaml -f manifests/03-pv-static.yaml -f manifests/04-pvc-static.yaml -f manifests/05-pod-static-writer.yaml -f manifests/09-service-webnote.yaml -f manifests/10-statefulset-webnote.yaml -f manifests/11-pod-client.yaml -f manifests/12-secret-postgres.yaml -f manifests/13-service-postgres.yaml -f manifests/14-statefulset-postgres.yaml >/dev/null && echo 'cluster matches repository (live objects)'
+cluster matches repository (live objects)
+
+$ wc -l evidence/final-state-*.txt evidence/tasktracker-dump.sql; grep -c 'Complete Practical 2' evidence/tasktracker-dump.sql
+   16 evidence/final-state-all.txt
+  217 evidence/final-state-events.txt
+   19 evidence/final-state-storage.txt
+   99 evidence/tasktracker-dump.sql
+  351 total
+1
+
+$ kubectl delete -f manifests/14-statefulset-postgres.yaml
+statefulset.apps "postgres" deleted from dso202-practical-02 namespace
+
+$ kubectl delete -f manifests/10-statefulset-webnote.yaml
+statefulset.apps "webnote" deleted from dso202-practical-02 namespace
+
+$ kubectl delete -f manifests/11-pod-client.yaml
+pod "client" deleted from dso202-practical-02 namespace
+
+$ kubectl delete -f manifests/05-pod-static-writer.yaml
+pod "static-writer" deleted from dso202-practical-02 namespace
+
+$ kubectl get pods
+No resources found in dso202-practical-02 namespace.
+
+$ kubectl get pvc
+NAME                STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS    VOLUMEATTRIBUTESCLASS   AGE
+content-webnote-0   Bound    pvc-4c9177fa-0b03-48c9-ab06-6b41d34d5e7e   1Gi        RWO            standard        <unset>                 13m
+content-webnote-1   Bound    pvc-fadb1b48-26e6-4aeb-9a01-9448c2791c1a   1Gi        RWO            standard        <unset>                 12m
+content-webnote-2   Bound    pvc-9137ccac-ada3-47ca-806c-c6fbda2f5c2c   1Gi        RWO            standard        <unset>                 11m
+content-webnote-3   Bound    pvc-e111aec6-3b73-4493-9764-756709563c1f   1Gi        RWO            standard        <unset>                 10m
+data-postgres-0     Bound    pvc-ed0f35ee-ced9-4523-8f1f-e517b8293790   2Gi        RWO            dso202-retain   <unset>                 6m16s
+pvc-web-static      Bound    pv-web-static                              1Gi        RWO            manual          <unset>                 15m
+
+$ kubectl delete pvc --all
+persistentvolumeclaim "content-webnote-0" deleted from dso202-practical-02 namespace
+persistentvolumeclaim "content-webnote-1" deleted from dso202-practical-02 namespace
+persistentvolumeclaim "content-webnote-2" deleted from dso202-practical-02 namespace
+persistentvolumeclaim "content-webnote-3" deleted from dso202-practical-02 namespace
+persistentvolumeclaim "data-postgres-0" deleted from dso202-practical-02 namespace
+persistentvolumeclaim "pvc-web-static" deleted from dso202-practical-02 namespace
+
+$ kubectl get pv
+NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS     CLAIM                                 STORAGECLASS    VOLUMEATTRIBUTESCLASS   REASON   AGE
+pv-web-static                              1Gi        RWO            Retain           Released   dso202-practical-02/pvc-web-static    manual          <unset>                          15m
+pvc-ed0f35ee-ced9-4523-8f1f-e517b8293790   2Gi        RWO            Retain           Released   dso202-practical-02/data-postgres-0   dso202-retain   <unset>                          6m21s
+
+$ docker exec dso202-p2-worker ls /var/local-path-provisioner
+pvc-ed0f35ee-ced9-4523-8f1f-e517b8293790_dso202-practical-02_data-postgres-0
+
+$ docker exec dso202-p2-worker2 ls /var/local-path-provisioner
+
+$ kubectl delete pv pv-web-static
+persistentvolume "pv-web-static" deleted
+
+$ kubectl get pv
+NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS     CLAIM                                 STORAGECLASS    VOLUMEATTRIBUTESCLASS   REASON   AGE
+pvc-ed0f35ee-ced9-4523-8f1f-e517b8293790   2Gi        RWO            Retain           Released   dso202-practical-02/data-postgres-0   dso202-retain   <unset>                          6m19s
+
+$ kubectl config set-context --current --namespace=default
+Context "kind-dso202-p2" modified.
+
+$ kind delete cluster --name dso202-p2
+Deleting cluster "dso202-p2" ...
+Deleted nodes: ["dso202-p2-control-plane" "dso202-p2-worker2" "dso202-p2-worker"]
+
+$ kind get clusters
+dso202
+kind
+
+$ docker ps --filter name=dso202-p2 --format '{{.Names}}'
+
+$ ls -l /c/Users/zeroe/dso202-p2-storage/pv-web-static/
+total 1
+-rw-r--r-- 1 zeroe 197609 192 Nov  7 20:29 ledger.txt
+
+$ cat /c/Users/zeroe/dso202-p2-storage/pv-web-static/ledger.txt
+2026-11-07T14:28:47Z start pod=static-writer node=worker-node-1
+2026-11-07T14:28:55Z start pod=static-writer node=worker-node-1
+2026-11-07T14:29:24Z start pod=static-writer node=worker-node-1
+

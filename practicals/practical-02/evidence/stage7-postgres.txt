@@ -1,0 +1,123 @@
+$ kubectl apply -f manifests/12-secret-postgres.yaml
+secret/postgres-credentials created
+
+$ kubectl get secret postgres-credentials
+NAME                   TYPE     DATA   AGE
+postgres-credentials   Opaque   3      0s
+
+$ kubectl get secret postgres-credentials -o jsonpath='{.data.POSTGRES_USER}' | base64 -d; echo
+taskuser
+
+$ kubectl apply -f manifests/13-service-postgres.yaml
+service/postgres-headless created
+service/postgres created
+
+$ kubectl get services
+NAME                TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+postgres            ClusterIP   10.96.204.228   <none>        5432/TCP   1s
+postgres-headless   ClusterIP   None            <none>        5432/TCP   1s
+webnote             ClusterIP   None            <none>        80/TCP     7m33s
+
+$ kubectl apply -f manifests/14-statefulset-postgres.yaml
+statefulset.apps/postgres created
+
+$ timeout 240 kubectl get pods -l app=postgres -w | awk '{print} /1\/1/ {exit}'; true
+NAME         READY   STATUS    RESTARTS   AGE
+postgres-0   0/1     Pending   0          0s
+postgres-0   0/1     Pending   0          6s
+postgres-0   0/1     ContainerCreating   0          6s
+postgres-0   0/1     ContainerCreating   0          6s
+
+$ kubectl wait --for=condition=Ready pod/postgres-0 --timeout=240s
+pod/postgres-0 condition met
+
+$ kubectl logs postgres-0 | tail -n 4
+2026-11-07 14:43:20.265 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2026-11-07 14:43:20.269 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2026-11-07 14:43:20.274 UTC [72] LOG:  database system was shut down at 2026-11-07 14:43:20 UTC
+2026-11-07 14:43:20.279 UTC [1] LOG:  database system is ready to accept connections
+
+$ kubectl get pvc data-postgres-0
+NAME              STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS    VOLUMEATTRIBUTESCLASS   AGE
+data-postgres-0   Bound    pvc-ed0f35ee-ced9-4523-8f1f-e517b8293790   2Gi        RWO            dso202-retain   <unset>                 5m14s
+
+$ kubectl get pv
+NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                                   STORAGECLASS    VOLUMEATTRIBUTESCLASS   REASON   AGE
+pv-web-static                              1Gi        RWO            Retain           Bound    dso202-practical-02/pvc-web-static      manual          <unset>                          14m
+pvc-4c9177fa-0b03-48c9-ab06-6b41d34d5e7e   1Gi        RWO            Delete           Bound    dso202-practical-02/content-webnote-0   standard        <unset>                          12m
+pvc-9137ccac-ada3-47ca-806c-c6fbda2f5c2c   1Gi        RWO            Delete           Bound    dso202-practical-02/content-webnote-2   standard        <unset>                          10m
+pvc-e111aec6-3b73-4493-9764-756709563c1f   1Gi        RWO            Delete           Bound    dso202-practical-02/content-webnote-3   standard        <unset>                          9m31s
+pvc-ed0f35ee-ced9-4523-8f1f-e517b8293790   2Gi        RWO            Retain           Bound    dso202-practical-02/data-postgres-0     dso202-retain   <unset>                          5m10s
+pvc-fadb1b48-26e6-4aeb-9a01-9448c2791c1a   1Gi        RWO            Delete           Bound    dso202-practical-02/content-webnote-1   standard        <unset>                          11m
+
+$ kubectl exec postgres-0 -- sh -c 'echo "$PGDATA"; ls /var/lib/postgresql'
+/var/lib/postgresql/18/docker
+18
+
+$ kubectl logs postgres-0 | grep -i 'init process complete'
+PostgreSQL init process complete; ready for start up.
+
+$ kubectl exec postgres-0 -- psql -U taskuser -d tasktracker -c "CREATE TABLE tasks (id serial PRIMARY KEY, title text NOT NULL, done boolean NOT NULL DEFAULT false);"
+CREATE TABLE
+
+$ kubectl exec postgres-0 -- psql -U taskuser -d tasktracker -c "INSERT INTO tasks (title) VALUES ('Complete Practical 2'), ('Read Unit II notes'), ('Draft the report');"
+INSERT 0 3
+
+$ kubectl exec postgres-0 -- psql -U taskuser -d tasktracker -c "SELECT id, title, done FROM tasks ORDER BY id;"
+ id |        title         | done 
+----+----------------------+------
+  1 | Complete Practical 2 | f
+  2 | Read Unit II notes   | f
+  3 | Draft the report     | f
+(3 rows)
+
+
+$ kubectl delete pod postgres-0
+pod "postgres-0" deleted from dso202-practical-02 namespace
+
+$ kubectl wait --for=condition=Ready pod/postgres-0 --timeout=240s
+pod/postgres-0 condition met
+
+$ kubectl exec postgres-0 -- psql -U taskuser -d tasktracker -c "SELECT count(*) FROM tasks;"
+ count 
+-------
+     3
+(1 row)
+
+
+$ kubectl logs postgres-0 | head -n 12
+
+PostgreSQL Database directory appears to contain a database; Skipping initialization
+
+2026-11-07 14:43:42.110 UTC [1] LOG:  starting PostgreSQL 18.6 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
+2026-11-07 14:43:42.110 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2026-11-07 14:43:42.110 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2026-11-07 14:43:42.120 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2026-11-07 14:43:42.139 UTC [36] LOG:  database system was shut down at 2026-11-07 14:43:40 UTC
+2026-11-07 14:43:42.150 UTC [1] LOG:  database system is ready to accept connections
+
+$ kubectl logs postgres-0 | grep -ci 'init process complete'
+0
+
+$ kubectl get pvc data-postgres-0
+NAME              STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS    VOLUMEATTRIBUTESCLASS   AGE
+data-postgres-0   Bound    pvc-ed0f35ee-ced9-4523-8f1f-e517b8293790   2Gi        RWO            dso202-retain   <unset>                 5m39s
+
+$ kubectl exec client -- nslookup postgres.dso202-practical-02.svc.cluster.local
+Server:		10.96.0.10
+Address:	10.96.0.10:53
+
+
+Name:	postgres.dso202-practical-02.svc.cluster.local
+Address: 10.96.204.228
+
+
+$ kubectl exec client -- nslookup postgres-0.postgres-headless.dso202-practical-02.svc.cluster.local
+Server:		10.96.0.10
+Address:	10.96.0.10:53
+
+Name:	postgres-0.postgres-headless.dso202-practical-02.svc.cluster.local
+Address: 10.244.2.25
+
+
+

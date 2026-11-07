@@ -1,0 +1,17 @@
+$ docker info --format '{{.ServerVersion}} {{.OperatingSystem}} CPUs={{.NCPU}} MemTotal={{.MemTotal}}'
+29.4.0 Docker Desktop CPUs=8 MemTotal=8242028544
+
+$ kind version
+kind v0.32.0 go1.26.5 windows/amd64
+
+$ kubectl version --client
+Client Version: v1.36.3
+Kustomize Version: v5.8.1
+
+$ kind get clusters
+dso202
+kind
+
+$ ls -ld /c/Users/zeroe/dso202-p2-storage
+drwxr-xr-x 1 zeroe 197609 0 Nov  7 20:24 /c/Users/zeroe/dso202-p2-storage
+

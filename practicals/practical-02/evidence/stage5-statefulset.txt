@@ -1,0 +1,121 @@
+$ kubectl apply -f manifests/09-service-webnote.yaml
+service/webnote created
+
+$ kubectl get service webnote
+NAME      TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+webnote   ClusterIP   None         <none>        80/TCP    0s
+
+$ kubectl apply -f manifests/10-statefulset-webnote.yaml
+statefulset.apps/webnote created
+
+$ timeout 150 kubectl get pods -l app=webnote -w --output-watch-events=false; true
+NAME        READY   STATUS    RESTARTS   AGE
+webnote-0   0/1     Pending   0          1s
+webnote-0   0/1     Pending   0          3s
+webnote-0   0/1     Init:0/1   0          3s
+webnote-0   0/1     Init:0/1   0          4s
+webnote-0   0/1     Init:0/1   0          4s
+webnote-0   0/1     PodInitializing   0          4s
+webnote-0   0/1     Running           0          44s
+webnote-0   1/1     Running           0          50s
+webnote-0   1/1     Running           0          50s
+webnote-1   0/1     Pending           0          0s
+webnote-1   0/1     Pending           0          0s
+webnote-1   0/1     Pending           0          4s
+webnote-1   0/1     Init:0/1          0          4s
+webnote-1   0/1     Init:0/1          0          4s
+webnote-1   0/1     Init:0/1          0          25s
+webnote-1   0/1     PodInitializing   0          26s
+webnote-1   0/1     Running           0          87s
+webnote-1   1/1     Running           0          93s
+webnote-1   1/1     Running           0          93s
+
+$ kubectl rollout status statefulset/webnote --timeout=180s
+Waiting for 1 pods to be ready...
+Waiting for 1 pods to be ready...
+Waiting for 1 pods to be ready...
+partitioned roll out complete: 3 new pods have been updated...
+
+$ kubectl get pvc -l app=webnote
+NAME                STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+content-webnote-0   Bound    pvc-4c9177fa-0b03-48c9-ab06-6b41d34d5e7e   1Gi        RWO            standard       <unset>                 2m45s
+content-webnote-1   Bound    pvc-fadb1b48-26e6-4aeb-9a01-9448c2791c1a   1Gi        RWO            standard       <unset>                 110s
+content-webnote-2   Bound    pvc-9137ccac-ada3-47ca-806c-c6fbda2f5c2c   1Gi        RWO            standard       <unset>                 12s
+
+$ kubectl get pods -l app=webnote -o custom-columns=NAME:.metadata.name,NODE:.spec.nodeName,IP:.status.podIP
+NAME        NODE            IP
+webnote-0   worker-node-1   10.244.2.17
+webnote-1   worker-node-2   10.244.1.3
+webnote-2   worker-node-2   10.244.1.5
+
+$ kubectl apply -f manifests/11-pod-client.yaml
+pod/client created
+
+$ kubectl wait --for=condition=Ready pod/client --timeout=120s
+pod/client condition met
+
+$ kubectl exec client -- nslookup webnote.dso202-practical-02.svc.cluster.local
+Server:		10.96.0.10
+Address:	10.96.0.10:53
+
+
+Name:	webnote.dso202-practical-02.svc.cluster.local
+Address: 10.244.1.5
+Name:	webnote.dso202-practical-02.svc.cluster.local
+Address: 10.244.1.3
+Name:	webnote.dso202-practical-02.svc.cluster.local
+Address: 10.244.2.17
+
+
+$ kubectl exec client -- nslookup webnote-1.webnote.dso202-practical-02.svc.cluster.local
+Server:		10.96.0.10
+Address:	10.96.0.10:53
+
+Name:	webnote-1.webnote.dso202-practical-02.svc.cluster.local
+Address: 10.244.1.3
+
+
+
+$ kubectl exec client -- wget -qO- http://webnote-1.webnote.dso202-practical-02.svc.cluster.local
+<h2>webnote-1</h2>
+created: 2026-11-07T14:32:01Z on worker-node-2
+started: 2026-11-07T14:32:01Z on worker-node-2
+
+$ kubectl get endpointslice -l kubernetes.io/service-name=webnote
+NAME            ADDRESSTYPE   PORTS   ENDPOINTS                           AGE
+webnote-drl4n   IPv4          80      10.244.2.17,10.244.1.3,10.244.1.5   2m47s
+
+$ kubectl exec webnote-0 -- sh -c 'echo "note added by hand in Stage 5" >> /usr/share/nginx/html/index.html'
+Defaulted container "nginx" out of: nginx, seed-content (init)
+
+$ kubectl exec client -- wget -qO- http://webnote-0.webnote.dso202-practical-02.svc.cluster.local
+<h2>webnote-0</h2>
+created: 2026-11-07T14:30:45Z on worker-node-1
+started: 2026-11-07T14:30:45Z on worker-node-1
+note added by hand in Stage 5
+
+$ kubectl exec client -- wget -qO- http://webnote-1.webnote.dso202-practical-02.svc.cluster.local
+<h2>webnote-1</h2>
+created: 2026-11-07T14:32:01Z on worker-node-2
+started: 2026-11-07T14:32:01Z on worker-node-2
+
+$ kubectl delete pod webnote-1
+pod "webnote-1" deleted from dso202-practical-02 namespace
+
+$ kubectl wait --for=condition=Ready pod/webnote-1 --timeout=180s
+pod/webnote-1 condition met
+
+$ kubectl get pod webnote-1 -o custom-columns=NAME:.metadata.name,NODE:.spec.nodeName,IP:.status.podIP,AGE:.metadata.creationTimestamp
+NAME        NODE            IP           AGE
+webnote-1   worker-node-2   10.244.1.6   2026-11-07T14:33:37Z
+
+$ kubectl get pvc content-webnote-1
+NAME                STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+content-webnote-1   Bound    pvc-fadb1b48-26e6-4aeb-9a01-9448c2791c1a   1Gi        RWO            standard       <unset>                 2m8s
+
+$ kubectl exec client -- wget -qO- http://webnote-1.webnote.dso202-practical-02.svc.cluster.local
+<h2>webnote-1</h2>
+created: 2026-11-07T14:32:01Z on worker-node-2
+started: 2026-11-07T14:32:01Z on worker-node-2
+started: 2026-11-07T14:33:38Z on worker-node-2
+

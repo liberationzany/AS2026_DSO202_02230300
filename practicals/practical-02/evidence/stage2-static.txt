@@ -1,0 +1,90 @@
+$ kubectl apply -f manifests/03-pv-static.yaml
+persistentvolume/pv-web-static created
+
+$ kubectl get pv
+NAME            CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM   STORAGECLASS   VOLUMEATTRIBUTESCLASS   REASON   AGE
+pv-web-static   1Gi        RWO            Retain           Available           manual         <unset>                          0s
+
+$ kubectl get pv pv-web-static -o jsonpath='{.spec.hostPath.path}{"\n"}'
+/mnt/dso202-static/pv-web-static
+
+$ kubectl get pv pv-web-static -o jsonpath='{.spec.nodeAffinity}{"\n"}'
+{"required":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"dso202/node-index","operator":"In","values":["1"]}]}]}}
+
+$ kubectl apply -f manifests/04-pvc-static.yaml
+persistentvolumeclaim/pvc-web-static created
+
+$ kubectl get pvc
+NAME             STATUS   VOLUME          CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+pvc-web-static   Bound    pv-web-static   1Gi        RWO            manual         <unset>                 0s
+
+$ kubectl get storageclass manual
+Error from server (NotFound): storageclasses.storage.k8s.io "manual" not found
+
+$ kubectl apply -f manifests/05-pod-static-writer.yaml
+pod/static-writer created
+
+$ kubectl wait --for=condition=Ready pod/static-writer --timeout=180s
+pod/static-writer condition met
+
+$ kubectl get pod static-writer -o wide
+NAME            READY   STATUS    RESTARTS   AGE   IP           NODE            NOMINATED NODE   READINESS GATES
+static-writer   1/1     Running   0          12s   10.244.2.2   worker-node-1   <none>           <none>
+
+$ kubectl exec static-writer -- cat /data/ledger.txt
+2026-11-07T14:28:47Z start pod=static-writer node=worker-node-1
+
+$ cat /c/Users/zeroe/dso202-p2-storage/pv-web-static/ledger.txt
+2026-11-07T14:28:47Z start pod=static-writer node=worker-node-1
+
+$ kubectl delete pod static-writer
+pod "static-writer" deleted from dso202-practical-02 namespace
+
+$ kubectl apply -f manifests/05-pod-static-writer.yaml
+pod/static-writer created
+
+$ kubectl wait --for=condition=Ready pod/static-writer --timeout=120s
+pod/static-writer condition met
+
+$ kubectl exec static-writer -- cat /data/ledger.txt
+2026-11-07T14:28:47Z start pod=static-writer node=worker-node-1
+2026-11-07T14:28:55Z start pod=static-writer node=worker-node-1
+
+$ kubectl delete pod static-writer
+pod "static-writer" deleted from dso202-practical-02 namespace
+
+$ kubectl delete pvc pvc-web-static
+persistentvolumeclaim "pvc-web-static" deleted from dso202-practical-02 namespace
+
+$ kubectl get pv
+NAME            CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS     CLAIM                                STORAGECLASS   VOLUMEATTRIBUTESCLASS   REASON   AGE
+pv-web-static   1Gi        RWO            Retain           Released   dso202-practical-02/pvc-web-static   manual         <unset>                          49s
+
+$ cat /c/Users/zeroe/dso202-p2-storage/pv-web-static/ledger.txt
+2026-11-07T14:28:47Z start pod=static-writer node=worker-node-1
+2026-11-07T14:28:55Z start pod=static-writer node=worker-node-1
+
+$ kubectl delete pv pv-web-static
+persistentvolume "pv-web-static" deleted
+
+$ ls -l /c/Users/zeroe/dso202-p2-storage/pv-web-static/
+total 1
+-rw-r--r-- 1 zeroe 197609 128 Nov  7 20:28 ledger.txt
+
+$ kubectl apply -f manifests/03-pv-static.yaml
+persistentvolume/pv-web-static created
+
+$ kubectl apply -f manifests/04-pvc-static.yaml
+persistentvolumeclaim/pvc-web-static created
+
+$ kubectl apply -f manifests/05-pod-static-writer.yaml
+pod/static-writer created
+
+$ kubectl wait --for=condition=Ready pod/static-writer --timeout=120s
+pod/static-writer condition met
+
+$ kubectl exec static-writer -- cat /data/ledger.txt
+2026-11-07T14:28:47Z start pod=static-writer node=worker-node-1
+2026-11-07T14:28:55Z start pod=static-writer node=worker-node-1
+2026-11-07T14:29:24Z start pod=static-writer node=worker-node-1
+
