@@ -1,0 +1,48 @@
+# =============================================================================
+# File       : argocd/argocd-app.yaml
+# Practical  : DSO202 Practical 4 - GitOps with Argo CD
+# Purpose    : Register the app with Argo CD DECLARATIVELY. This object is
+#              itself a Kubernetes custom resource (kind: Application, from
+#              the CRDs Argo CD installs), so it is the one file applied with
+#              kubectl. Everything under gitops/manifests is then applied by
+#              Argo CD, never by hand.
+# Apply with : kubectl apply -f argocd/argocd-app.yaml
+#
+# Kept OUTSIDE the synced path on purpose: if this file lived inside
+# gitops/manifests, the Application would be trying to manage itself.
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: my-webapp
+  # Argo CD only watches Application objects in its own namespace.
+  namespace: argocd
+spec:
+  # The AppProject that limits which repos and clusters this app may use.
+  # 'default' allows everything, which is acceptable only on a lab cluster.
+  project: default
+
+  # 1. WHERE IS THE DESIRED STATE? (GitHub)
+  # This repository is public, so Argo CD needs no credentials to clone it.
+  # A private repo would need a PAT or SSH deploy key stored as a Secret in
+  # the argocd namespace.
+  source:
+    repoURL: https://github.com/liberationzany/AS2026_DSO202_02230300.git
+    # A branch name rather than HEAD, so the tracked branch is explicit.
+    targetRevision: main
+    # Only this folder is synced. The rest of the repository (other
+    # practicals, reports, evidence) is ignored by this Application.
+    path: practicals/practical-04/gitops/manifests
+
+  # 2. WHERE SHOULD IT BE DEPLOYED? (the same kind cluster Argo CD runs in)
+  destination:
+    server: https://kubernetes.default.svc   # in-cluster API server address
+    namespace: demo-app                      # objects without a namespace land here
+
+  # 3. HOW SHOULD ARGO CD SYNC IT?
+  syncPolicy:
+    automated:
+      prune: true      # delete cluster objects whose files are removed from Git (Experiment 3)
+      selfHeal: true   # undo manual kubectl changes to managed objects (Experiment 2)
+    syncOptions:
+      - CreateNamespace=true   # create 'demo-app' on first sync if it is missing
