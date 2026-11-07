@@ -1,0 +1,66 @@
+# =============================================================================
+# File        : 03-rbac-controller.yaml
+# Descriptor  : Unit II 2.3 (RBAC) applied to 2.4 (Operators)
+# Purpose     : Give the controller an identity and the smallest set of
+#               permissions that its reconcile function actually requires.
+# Apply with  : kubectl apply -f 03-rbac-controller.yaml
+# =============================================================================
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  # The identity the controller Pod authenticates as. It is not shared with
+  # any other workload, so its permissions describe this controller and
+  # nothing else.
+  name: staticsite-controller
+  namespace: dso202-operators
+---
+# Cluster-scoped, because the loop lists StaticSites in every namespace.
+# A controller restricted to one namespace would use a Role and a RoleBinding
+# instead, which is the safer default when the requirement allows it.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: staticsite-controller
+rules:
+  # 1. Read the custom resource. The controller never writes spec: spec is
+  #    written by humans and by pipelines, and a controller that edited it
+  #    would be overwriting the intention it exists to satisfy.
+  - apiGroups: ["dso202.cst.edu.bt"]
+    resources: ["staticsites"]
+    verbs: ["get", "list", "watch"]
+
+  # 2. Write the status subresource, and nothing else on the object. This split
+  #    is only possible because the CRD declares subresources.status.
+  - apiGroups: ["dso202.cst.edu.bt"]
+    resources: ["staticsites/status"]
+    verbs: ["get", "patch", "update"]
+
+  # 3. Manage the child objects it creates. 'delete' is deliberately absent:
+  #    removal is performed by garbage collection through ownerReferences, so
+  #    the controller has no need for the permission.
+  - apiGroups: [""]
+    resources: ["configmaps", "services"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+  # No rule grants access to Secrets, to Pods, or to any resource the loop
+  # does not touch. That restraint is the whole content of the review an
+  # operator receives before it is admitted to a production cluster.
+---
+# Binds the ClusterRole above to the ServiceAccount above, cluster-wide.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: staticsite-controller
+roleRef:
+  # roleRef is immutable: changing which role is bound requires deleting and
+  # recreating the binding.
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: staticsite-controller
+subjects:
+  - kind: ServiceAccount
+    name: staticsite-controller
+    namespace: dso202-operators   # required for a ServiceAccount subject

@@ -1,0 +1,130 @@
+# =============================================================================
+# File        : 01-crd-staticsite.yaml
+# Descriptor  : Unit II 2.4.1 (CRDs), 2.4.2 (lifecycle management)
+# Purpose     : Register the resource 'staticsites' in the group
+#               dso202.cst.edu.bt so that kube-apiserver stores, validates,
+#               and serves objects of kind StaticSite.
+# Apply with  : kubectl apply -f 01-crd-staticsite.yaml
+# =============================================================================
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  # This name is not free text. It must be exactly
+  # <spec.names.plural>.<spec.group>, and the API server rejects any other
+  # value. It is the only object name in Kubernetes with that constraint.
+  name: staticsites.dso202.cst.edu.bt
+spec:
+  # The API group. A domain under the organisation's control is used so that
+  # this resource can never collide with a vendor's resource of the same name.
+  group: dso202.cst.edu.bt
+
+  # Namespaced, so that role-based access control from 2.3 can grant one team
+  # rights over StaticSites in its own namespace only. This field cannot be
+  # changed later without deleting the CRD and every object of this kind.
+  scope: Namespaced
+
+  names:
+    kind: StaticSite            # written in the 'kind:' field of a manifest
+    plural: staticsites         # the URL path segment and the kubectl argument
+    singular: staticsite        # used in kubectl output and error messages
+    shortNames:
+      - ss                      # 'kubectl get ss' works after this is applied
+    categories:
+      - dso202                  # 'kubectl get dso202' lists every such object
+
+  versions:
+    - name: v1
+      served: true              # requests to /apis/dso202.cst.edu.bt/v1 succeed
+      storage: true             # exactly one version may set this to true
+
+      # Columns shown by 'kubectl get staticsites'. Without this block the
+      # only columns printed are NAME and AGE, which hides everything useful.
+      additionalPrinterColumns:
+        - name: Tier
+          type: string
+          jsonPath: .spec.tier
+        - name: Desired
+          type: integer
+          jsonPath: .spec.replicas
+        - name: Ready
+          type: integer
+          jsonPath: .status.readyReplicas
+        - name: Phase
+          type: string
+          jsonPath: .status.phase
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+
+      subresources:
+        # Creates a second write endpoint at .../staticsites/<name>/status.
+        # Consequences: a write to the main endpoint cannot alter status, a
+        # write here cannot alter spec, and metadata.generation now increments
+        # only when spec changes.
+        status: {}
+
+      schema:
+        # A structural schema is mandatory under apiextensions.k8s.io/v1.
+        # Every field not declared here is PRUNED at admission time, silently
+        # and without error. This is the mechanism behind the most common
+        # confusion with custom resources.
+        openAPIV3Schema:
+          type: object
+          properties:
+
+            spec:
+              type: object
+              required:
+                - message        # rejected at write time if absent
+              properties:
+
+                message:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                  description: Text rendered as the body of the served page.
+
+                replicas:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                  default: 1     # written in at admission when absent, so the
+                                 # controller may read it unconditionally
+                  description: Number of web server Pods to run.
+
+                tier:
+                  type: string
+                  enum:          # any other value is rejected
+                    - development
+                    - production
+                  default: development
+                  description: Environment this site belongs to.
+                  x-kubernetes-validations:
+                    # 'oldSelf' is the value before the update. On creation
+                    # there is no old value, so this rule is not evaluated;
+                    # on every update it makes the field immutable.
+                    - rule: self == oldSelf
+                      message: tier is immutable once the object exists
+
+              # A rule placed on the object rather than on a single field can
+              # reference several fields at once. 'self' is bound to spec here.
+              x-kubernetes-validations:
+                - rule: self.replicas == 1 || self.tier == 'production'
+                  message: more than one replica is permitted only on the production tier
+
+            status:
+              type: object
+              properties:
+                phase:
+                  type: string
+                  description: Progressing while replicas are starting, Ready when all are available.
+                readyReplicas:
+                  type: integer
+                  description: Replicas reported available by the Deployment.
+                observedGeneration:
+                  type: integer
+                  format: int64
+                  description: >-
+                    The value of metadata.generation the controller last acted
+                    upon. When it is lower than metadata.generation, the fields
+                    above describe an earlier version of the spec.

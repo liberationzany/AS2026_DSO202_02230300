@@ -1,0 +1,70 @@
+# =============================================================================
+# File         : 04-controller-deployment.yaml
+# Descriptor   : Unit II 2.4.3 (controllers) running under 2.3 (RBAC)
+# Purpose      : Run reconcile.sh in the cluster under the ServiceAccount
+#                defined in 03-rbac-controller.yaml.
+# Prepare with : kubectl create configmap staticsite-controller-script \
+#                  --from-file=reconcile.sh -n dso202-operators
+# Apply with   : kubectl apply -f 04-controller-deployment.yaml
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: staticsite-controller
+  namespace: dso202-operators
+  labels:
+    app.kubernetes.io/name: staticsite-controller
+spec:
+  # One replica only. Two replicas of this script would each reconcile every
+  # object and would overwrite one another's status writes. Production
+  # operators run several replicas and use leader election on a Lease object so
+  # that exactly one replica reconciles at a time.
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: staticsite-controller
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: staticsite-controller
+    spec:
+      # The Pod authenticates as this ServiceAccount. Inside the container,
+      # kubectl finds the mounted token and the in-cluster API server address
+      # automatically, so no kubeconfig is needed.
+      serviceAccountName: staticsite-controller
+      containers:
+        - name: controller
+          image: dso202/staticsite-controller:1.0
+          imagePullPolicy: IfNotPresent      # the image was side-loaded by kind
+          command: ["bash", "/opt/controller/reconcile.sh"]
+          env:
+            # The image runs as UID 65532, which has no home directory.
+            # kubectl writes its discovery cache under $HOME, so point it at a
+            # writable emptyDir instead of letting it fail on every call.
+            - name: HOME
+              value: /tmp
+          volumeMounts:
+            # The script is delivered as a ConfigMap, so changing the loop
+            # does not require rebuilding the image.
+            - name: script
+              mountPath: /opt/controller
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+      volumes:
+        - name: script
+          configMap:
+            name: staticsite-controller-script
+        - name: tmp
+          emptyDir: {}

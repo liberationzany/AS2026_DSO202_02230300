@@ -1,0 +1,16 @@
+# =============================================================================
+# File        : 02-staticsite-sample.yaml
+# Purpose     : One instance of the new kind. This object is desired state and
+#               nothing else; it creates no Pod by itself.
+# Apply with  : kubectl apply -f 02-staticsite-sample.yaml
+# =============================================================================
+apiVersion: dso202.cst.edu.bt/v1     # <group>/<version> from the CRD
+kind: StaticSite                     # spec.names.kind from the CRD
+metadata:
+  name: welcome
+  labels:
+    dso202/practical: "operators"
+spec:
+  message: "DSO202 StaticSite served by a custom controller"
+  replicas: 2
+  tier: production                   # required, because replicas exceeds 1
