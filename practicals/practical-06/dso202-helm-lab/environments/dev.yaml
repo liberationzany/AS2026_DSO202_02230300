@@ -1,0 +1,12 @@
+# environments/dev.yaml - overrides for the development release.
+replicaCount: 1
+page:
+  environment: dev
+  message: "Development build v2 - not for customers"
+service:
+  type: NodePort
+  # The notes use 30080. On this shared dso202 cluster, 30080 is already held
+  # by Practical 1's web-nodeport Service (a NodePort is allocated
+  # cluster-wide), and 30081/30082 by Assignment 1. 30083 is the next free
+  # port. The 30080 clash itself is reproduced on purpose in Stage 6.
+  nodePort: 30083

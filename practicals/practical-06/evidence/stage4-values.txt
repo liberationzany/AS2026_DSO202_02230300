@@ -1,0 +1,68 @@
+$ echo '--- Step 1: --set on top of a file ---'
+--- Step 1: --set on top of a file ---
+
+$ helm template webapp-dev ./webapp -f environments/dev.yaml --set replicaCount=2 | grep 'replicas:'
+  replicas: 2
+
+$ echo '--- Step 2: layering dev then prod ---'
+--- Step 2: layering dev then prod ---
+
+$ helm template webapp-dev ./webapp -f environments/dev.yaml -f environments/prod.yaml | grep -E 'type: NodePort|nodePort:|dso202/environment|replicas:' | sort | uniq -c
+      1         dso202/environment: "prod"
+      1       nodePort: 30083
+      4     dso202/environment: "prod"
+      1   replicas: 3
+      1   type: NodePort
+
+$ echo '--- Step 2: layering prod then dev ---'
+--- Step 2: layering prod then dev ---
+
+$ helm template webapp-dev ./webapp -f environments/prod.yaml -f environments/dev.yaml -s templates/deployment.yaml | grep -E 'dso202/environment|replicas:|cpu:'
+    dso202/environment: "dev"
+  replicas: 1
+        dso202/environment: "dev"
+              cpu: 500m
+              cpu: 100m
+
+$ echo '--- Step 3: --set type conversion ---'
+--- Step 3: --set type conversion ---
+
+$ helm template webapp-dev ./webapp -f environments/dev.yaml -s templates/deployment.yaml --set 'podAnnotations.prometheus\.io/scrape=true' | grep scrape
+        prometheus.io/scrape: true
+
+$ helm template webapp-dev ./webapp -f environments/dev.yaml -s templates/deployment.yaml --set-string 'podAnnotations.prometheus\.io/scrape=true' | grep scrape
+        prometheus.io/scrape: "true"
+
+$ helm install webapp-dev ./webapp -f environments/dev.yaml -n dso202-dev --create-namespace --set 'podAnnotations.prometheus\.io/scrape=true' 2>&1 | cut -c1-400
+Error: INSTALLATION FAILED: server-side apply failed for object dso202-dev/webapp-dev apps/v1, Kind=Deployment: failed to create typed patch object (dso202-dev/webapp-dev; apps/v1, Kind=Deployment): .spec.template.metadata.annotations.prometheus.io/scrape: expected string, got &value.valueUnstructured{Value:true}
+
+$ helm list -n dso202-dev -a
+Error: unknown shorthand flag: 'a' in -a
+
+$ echo '--- Step 4: delete a default with null ---'
+--- Step 4: delete a default with null ---
+
+$ helm template webapp-dev ./webapp -f environments/dev.yaml -s templates/deployment.yaml --set resources.limits=null | sed -n '/resources:/,/volumeMounts/p'
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+          volumeMounts:
+
+$ helm list -n dso202-dev --failed
+NAME      	NAMESPACE 	REVISION	UPDATED                              	STATUS	CHART       	APP VERSION
+webapp-dev	dso202-dev	1       	2026-11-07 22:09:27.0754751 +0600 +06	failed	webapp-0.1.0	1.30-alpine
+
+$ kubectl get configmap,svc,deploy -n dso202-dev -l app.kubernetes.io/instance=webapp-dev
+NAME                   DATA   AGE
+configmap/webapp-dev   1      7s
+
+NAME                 TYPE       CLUSTER-IP   EXTERNAL-IP   PORT(S)        AGE
+service/webapp-dev   NodePort   10.96.7.45   <none>        80:30083/TCP   7s
+
+$ helm uninstall webapp-dev -n dso202-dev
+release "webapp-dev" uninstalled
+
+$ kubectl get configmap,svc,deploy -n dso202-dev -l app.kubernetes.io/instance=webapp-dev
+No resources found in dso202-dev namespace.
+

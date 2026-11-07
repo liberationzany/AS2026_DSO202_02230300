@@ -1,0 +1,25 @@
+$ kubectl config current-context
+kind-dso202
+
+$ kubectl get nodes
+NAME            STATUS   ROLES           AGE   VERSION
+control-plane   Ready    control-plane   88d   v1.36.1
+worker-node-1   Ready    <none>          88d   v1.36.1
+worker-node-2   Ready    <none>          88d   v1.36.1
+
+$ helm version
+version.BuildInfo{Version:"v4.3.1", GitCommit:"c0d08d0d6d9424d4a14febb5e8a3e51b0dd00dff", GitTreeState:"clean", GoVersion:"go1.27.2", KubeClientVersion:"v1.37"}
+
+$ helm env | grep -E 'HELM_(NAMESPACE|MAX_HISTORY|REPOSITORY_CONFIG|REPOSITORY_CACHE|REGISTRY_CONFIG)'
+HELM_MAX_HISTORY="10"
+HELM_NAMESPACE="dso202-operators"
+HELM_REGISTRY_CONFIG="C:\Users\zeroe\AppData\Roaming\helm\registry\config.json"
+HELM_REPOSITORY_CACHE="C:\Users\zeroe\AppData\Local\Temp\helm\repository"
+HELM_REPOSITORY_CONFIG="C:\Users\zeroe\AppData\Roaming\helm\repositories.yaml"
+
+$ helm list -A
+NAME	NAMESPACE	REVISION	UPDATED	STATUS	CHART	APP VERSION
+
+$ echo 'APT check not applicable: Windows host, Helm installed with winget (package Helm.Helm), no apt sources exist.'
+APT check not applicable: Windows host, Helm installed with winget (package Helm.Helm), no apt sources exist.
+

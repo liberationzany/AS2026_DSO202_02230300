@@ -1,0 +1,237 @@
+$ helm upgrade --install webapp-dev ./webapp -f environments/dev.yaml -n dso202-dev --create-namespace --wait --timeout 5m
+Release "webapp-dev" does not exist. Installing it now.
+NAME: webapp-dev
+LAST DEPLOYED: Sat Nov  7 22:10:33 2026
+NAMESPACE: dso202-dev
+STATUS: deployed
+REVISION: 1
+DESCRIPTION: Install complete
+NOTES:
+Release webapp-dev (revision 1) is running in namespace dso202-dev.
+Environment: dev, replicas: 1
+Open the page from the host:
+  curl http://localhost:30083
+
+$ helm upgrade --install webapp-prod ./webapp -f environments/prod.yaml -n dso202-prod --create-namespace --wait --timeout 5m
+Release "webapp-prod" does not exist. Installing it now.
+NAME: webapp-prod
+LAST DEPLOYED: Sat Nov  7 22:10:35 2026
+NAMESPACE: dso202-prod
+STATUS: deployed
+REVISION: 1
+DESCRIPTION: Install complete
+NOTES:
+Release webapp-prod (revision 1) is running in namespace dso202-prod.
+Environment: prod, replicas: 3
+Forward a local port, then open the page:
+  kubectl -n dso202-prod port-forward svc/webapp-prod 8080:80
+  curl http://localhost:8080
+
+$ helm list -A
+NAME       	NAMESPACE  	REVISION	UPDATED                              	STATUS  	CHART       	APP VERSION
+webapp-dev 	dso202-dev 	1       	2026-11-07 22:10:33.6919214 +0600 +06	deployed	webapp-0.1.0	1.30-alpine
+webapp-prod	dso202-prod	1       	2026-11-07 22:10:35.3526217 +0600 +06	deployed	webapp-0.1.0	1.30-alpine
+
+$ kubectl get deploy,svc,pods -n dso202-dev -o wide
+NAME                         READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES              SELECTOR
+deployment.apps/webapp-dev   1/1     1            1           7s    nginx        nginx:1.30-alpine   app.kubernetes.io/instance=webapp-dev,app.kubernetes.io/name=webapp
+
+NAME                 TYPE       CLUSTER-IP    EXTERNAL-IP   PORT(S)        AGE   SELECTOR
+service/webapp-dev   NodePort   10.96.124.5   <none>        80:30083/TCP   7s    app.kubernetes.io/instance=webapp-dev,app.kubernetes.io/name=webapp
+
+NAME                              READY   STATUS    RESTARTS   AGE   IP            NODE            NOMINATED NODE   READINESS GATES
+pod/webapp-dev-566797f967-xdpw5   1/1     Running   0          7s    10.244.1.31   worker-node-2   <none>           <none>
+
+$ kubectl get deploy,svc,pods -n dso202-prod -o wide
+NAME                          READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES              SELECTOR
+deployment.apps/webapp-prod   3/3     3            3           6s    nginx        nginx:1.30-alpine   app.kubernetes.io/instance=webapp-prod,app.kubernetes.io/name=webapp
+
+NAME                  TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE   SELECTOR
+service/webapp-prod   ClusterIP   10.96.114.103   <none>        80/TCP    6s    app.kubernetes.io/instance=webapp-prod,app.kubernetes.io/name=webapp
+
+NAME                               READY   STATUS    RESTARTS   AGE   IP            NODE            NOMINATED NODE   READINESS GATES
+pod/webapp-prod-5995fcc577-6pln5   1/1     Running   0          6s    10.244.1.32   worker-node-2   <none>           <none>
+pod/webapp-prod-5995fcc577-cmzlh   1/1     Running   0          6s    10.244.1.33   worker-node-2   <none>           <none>
+pod/webapp-prod-5995fcc577-ps4z9   1/1     Running   0          6s    10.244.2.21   worker-node-1   <none>           <none>
+
+$ helm test webapp-dev -n dso202-dev
+NAME: webapp-dev
+LAST DEPLOYED: Sat Nov  7 22:10:33 2026
+NAMESPACE: dso202-dev
+STATUS: deployed
+REVISION: 1
+DESCRIPTION: Install complete
+TEST SUITE:     webapp-dev-test-connection
+Last Started:   Sat Nov  7 22:10:42 2026
+Last Completed: Sat Nov  7 22:11:47 2026
+Phase:          Succeeded
+
+$ helm test webapp-prod -n dso202-prod
+NAME: webapp-prod
+LAST DEPLOYED: Sat Nov  7 22:10:35 2026
+NAMESPACE: dso202-prod
+STATUS: deployed
+REVISION: 1
+DESCRIPTION: Install complete
+TEST SUITE:     webapp-prod-test-connection
+Last Started:   Sat Nov  7 22:11:47 2026
+Last Completed: Sat Nov  7 22:11:51 2026
+Phase:          Succeeded
+
+$ docker exec dso202-control-plane curl -s http://localhost:30083 | grep -E '<h1>|<p>'
+<h1>DSO202 Helm Demo</h1>
+<p>Development build - not for customers</p>
+<p>Environment: dev</p>
+<p>Release: webapp-dev in namespace dso202-dev</p>
+<p>Chart: webapp-0.1.0, application version 1.30-alpine</p>
+
+$ kubectl run curl-prod --rm -i --restart=Never --image=busybox:1.37 -n dso202-prod -- wget -qO- http://webapp-prod 2>/dev/null | grep -E '<h1>|<p>' | head -5
+<h1>DSO202 Helm Demo</h1>
+<p>Production</p>
+<p>Environment: prod</p>
+<p>Release: webapp-prod in namespace dso202-prod</p>
+<p>Chart: webapp-0.1.0, application version 1.30-alpine</p>
+
+$ echo '=== Upgrade: environments/dev.yaml message changed to "Development build v2 - not for customers" ==='
+=== Upgrade: environments/dev.yaml message changed to "Development build v2 - not for customers" ===
+
+$ ck
+checksum=1d50881e2b72ef33... pod=webapp-dev-566797f967-xdpw5 webapp-dev-test-connection
+
+$ helm diff --help >/dev/null 2>&1 || echo '(helm-diff plugin not installed; previewing with helm template instead)'; helm template webapp-dev ./webapp -f environments/dev.yaml -n dso202-dev -s templates/deployment.yaml | grep checksum/config
+(helm-diff plugin not installed; previewing with helm template instead)
+        checksum/config: 4e9ac327b12cba62c020a9fb6334748576842cf297020cdf4b752fed3c372cb3
+
+$ helm upgrade --install webapp-dev ./webapp -f environments/dev.yaml -n dso202-dev --wait --timeout 5m | head -6
+Release "webapp-dev" has been upgraded. Happy Helming!
+NAME: webapp-dev
+LAST DEPLOYED: Sat Nov  7 22:12:06 2026
+NAMESPACE: dso202-dev
+STATUS: deployed
+REVISION: 2
+
+$ ck
+checksum=4e9ac327b12cba62... pod=webapp-dev-566797f967-xdpw5 webapp-dev-7f99fdfb58-sckg2 webapp-dev-test-connection
+
+$ docker exec dso202-control-plane curl -s http://localhost:30083 | grep 'Development'
+<p>Development build v2 - not for customers</p>
+
+$ echo '=== Rollback to revision 1 ==='
+=== Rollback to revision 1 ===
+
+$ helm rollback webapp-dev 1 -n dso202-dev --wait --timeout 5m
+Rollback was a success! Happy Helming!
+
+$ ck
+checksum=1d50881e2b72ef33... pod=webapp-dev-566797f967-svsqp webapp-dev-7f99fdfb58-sckg2 webapp-dev-test-connection
+
+$ docker exec dso202-control-plane curl -s http://localhost:30083 | grep 'Development'
+
+$ helm history webapp-dev -n dso202-dev
+REVISION	UPDATED                 	STATUS    	CHART       	APP VERSION	DESCRIPTION     
+1       	Sat Nov  7 22:10:33 2026	superseded	webapp-0.1.0	1.30-alpine	Install complete
+2       	Sat Nov  7 22:12:06 2026	superseded	webapp-0.1.0	1.30-alpine	Upgrade complete
+3       	Sat Nov  7 22:12:09 2026	deployed  	webapp-0.1.0	1.30-alpine	Rollback to 1   
+
+$ echo '(retry 5 s later: the first curl ran while the rollout was still swapping Pods)'; kubectl get pods -n dso202-dev -l app.kubernetes.io/instance=webapp-dev --field-selector status.phase=Running
+(retry 5 s later: the first curl ran while the rollout was still swapping Pods)
+NAME                          READY   STATUS    RESTARTS   AGE
+webapp-dev-566797f967-svsqp   1/1     Running   0          46s
+
+$ for i in 1 2 3; do docker exec dso202-control-plane curl -s -m 3 http://localhost:30083 | grep 'Development' || echo '(empty)'; done
+<p>Development build - not for customers</p>
+<p>Development build - not for customers</p>
+<p>Development build - not for customers</p>
+
+$ echo '=== Drift under server-side apply ==='
+=== Drift under server-side apply ===
+
+$ kubectl get deploy webapp-prod -n dso202-prod -o jsonpath='{range .metadata.managedFields[*]}{.manager} {.operation}{"\n"}{end}'
+helm Apply
+kube-controller-manager Update
+
+$ kubectl scale deployment webapp-prod -n dso202-prod --replicas=5
+deployment.apps/webapp-prod scaled
+
+$ kubectl get deploy webapp-prod -n dso202-prod -o jsonpath='{range .metadata.managedFields[*]}{.manager} {.operation} {.subresource}{"\n"}{end}'
+helm Apply 
+kubectl.exe Update scale
+kube-controller-manager Update status
+
+$ helm upgrade webapp-prod ./webapp -f environments/prod.yaml -n dso202-prod --wait --timeout 5m 2>&1 | cut -c1-500; echo "exit code: ${PIPESTATUS[0]}"
+level=WARN msg="upgrade failed" name=webapp-prod error="conflict occurred while applying object dso202-prod/webapp-prod apps/v1, Kind=Deployment: Apply failed with 1 conflict: conflict with \"kubectl.exe\" with subresource \"scale\" using apps/v1: .spec.replicas"
+Error: UPGRADE FAILED: conflict occurred while applying object dso202-prod/webapp-prod apps/v1, Kind=Deployment: Apply failed with 1 conflict: conflict with "kubectl.exe" with subresource "scale" using apps/v1: .spec.replicas
+exit code: 1
+
+$ kubectl get deploy webapp-prod -n dso202-prod -o jsonpath='spec.replicas={.spec.replicas}{"\n"}'
+spec.replicas=5
+
+$ helm history webapp-prod -n dso202-prod
+REVISION	UPDATED                 	STATUS  	CHART       	APP VERSION	DESCRIPTION                                                                                                                                                                                                                             
+1       	Sat Nov  7 22:10:35 2026	deployed	webapp-0.1.0	1.30-alpine	Install complete                                                                                                                                                                                                                        
+2       	Sat Nov  7 22:13:07 2026	failed  	webapp-0.1.0	1.30-alpine	Upgrade "webapp-prod" failed: conflict occurred while applying object dso202-prod/webapp-prod apps/v1, Kind=Deployment: Apply failed with 1 conflict: conflict with "kubectl.exe" with subresource "scale" using apps/v1: .spec.replicas
+
+$ helm upgrade webapp-prod ./webapp -f environments/prod.yaml -n dso202-prod --force-conflicts --wait --timeout 5m | head -6
+Release "webapp-prod" has been upgraded. Happy Helming!
+NAME: webapp-prod
+LAST DEPLOYED: Sat Nov  7 22:13:15 2026
+NAMESPACE: dso202-prod
+STATUS: deployed
+REVISION: 3
+
+$ kubectl get deploy webapp-prod -n dso202-prod -o jsonpath='spec.replicas={.spec.replicas}{"\n"}{range .metadata.managedFields[*]}{.manager} {.operation} {.subresource}{"\n"}{end}'
+spec.replicas=3
+helm Apply 
+kube-controller-manager Update status
+
+$ helm history webapp-prod -n dso202-prod | cut -c1-120
+REVISION	UPDATED                 	STATUS    	CHART       	APP VERSION	DESCRIPTION                                       
+1       	Sat Nov  7 22:10:35 2026	superseded	webapp-0.1.0	1.30-alpine	Install complete                                  
+2       	Sat Nov  7 22:13:07 2026	failed    	webapp-0.1.0	1.30-alpine	Upgrade "webapp-prod" failed: conflict occurred wh
+3       	Sat Nov  7 22:13:15 2026	deployed  	webapp-0.1.0	1.30-alpine	Upgrade complete                                  
+
+$ echo '=== NodePort clash: dev asks for 30080, which Practical 1 already holds ==='
+=== NodePort clash: dev asks for 30080, which Practical 1 already holds ===
+
+$ kubectl get svc -A -o jsonpath='{range .items[?(@.spec.type=="NodePort")]}{.metadata.namespace}/{.metadata.name} {.spec.ports[*].nodePort}{"\n"}{end}'
+dso202-assignment-1/backend-svc 30082
+dso202-assignment-1/frontend-svc 30081
+dso202-dev/webapp-dev 30083
+dso202-practical-01/web-nodeport 30080
+
+$ helm upgrade webapp-dev ./webapp -f environments/dev.yaml -n dso202-dev --set service.nodePort=30080 --rollback-on-failure --timeout 2m 2>&1 | cut -c1-400; echo "exit code: ${PIPESTATUS[0]}"
+level=WARN msg="upgrade failed" name=webapp-dev error="server-side apply failed for object dso202-dev/webapp-dev /v1, Kind=Service: Service \"webapp-dev\" is invalid: spec.ports[0].nodePort: Invalid value: 30080: provided port is already allocated"
+Error: UPGRADE FAILED: release webapp-dev failed, and has been rolled back due to rollback-on-failure being set: server-side apply failed for object dso202-dev/webapp-dev /v1, Kind=Service: Service "webapp-dev" is invalid: spec.ports[0].nodePort: Invalid value: 30080: provided port is already allocated
+exit code: 1
+
+$ helm history webapp-dev -n dso202-dev | cut -c1-140
+REVISION	UPDATED                 	STATUS    	CHART       	APP VERSION	DESCRIPTION                                                           
+1       	Sat Nov  7 22:10:33 2026	superseded	webapp-0.1.0	1.30-alpine	Install complete                                                      
+2       	Sat Nov  7 22:12:06 2026	superseded	webapp-0.1.0	1.30-alpine	Upgrade complete                                                      
+3       	Sat Nov  7 22:12:09 2026	superseded	webapp-0.1.0	1.30-alpine	Rollback to 1                                                         
+4       	Sat Nov  7 22:13:25 2026	failed    	webapp-0.1.0	1.30-alpine	Upgrade "webapp-dev" failed: server-side apply failed for object dso20
+5       	Sat Nov  7 22:13:25 2026	deployed  	webapp-0.1.0	1.30-alpine	Rollback to 3                                                         
+
+$ kubectl get svc webapp-dev -n dso202-dev
+NAME         TYPE       CLUSTER-IP    EXTERNAL-IP   PORT(S)        AGE
+webapp-dev   NodePort   10.96.124.5   <none>        80:30083/TCP   2m51s
+
+$ helm upgrade webapp-dev ./webapp -f environments/dev.yaml -n dso202-dev --set service.nodePort=30080 --atomic --dry-run=server 2>&1 | head -3
+Flag --atomic has been deprecated, use --rollback-on-failure instead
+Release "webapp-dev" has been upgraded. Happy Helming!
+NAME: webapp-dev
+
+$ echo '(the --dry-run=server above printed "upgraded" but must not have changed anything:)'; helm history webapp-dev -n dso202-dev --max 1 | cut -c1-90; kubectl get svc webapp-dev -n dso202-dev -o jsonpath='nodePort={.spec.ports[0].nodePort}{"\n"}'
+(the --dry-run=server above printed "upgraded" but must not have changed anything:)
+REVISION	UPDATED                 	STATUS  	CHART       	APP VERSION	DESCRIPTION  
+5       	Sat Nov  7 22:13:25 2026	deployed	webapp-0.1.0	1.30-alpine	Rollback to 3
+nodePort=30083
+
+$ helm template webapp-dev ./webapp -f environments/dev.yaml -n dso202-dev --set service.nodePort=30080 --skip-tests | kubectl apply --dry-run=server -n dso202-dev -f - 2>&1 | cut -c1-200
+Warning: resource configmaps/webapp-dev is missing the kubectl.kubernetes.io/last-applied-configuration annotation which is required by kubectl apply. kubectl apply should only be used on resources cr
+configmap/webapp-dev configured (server dry run)
+Warning: resource services/webapp-dev is missing the kubectl.kubernetes.io/last-applied-configuration annotation which is required by kubectl apply. kubectl apply should only be used on resources crea
+Warning: resource deployments/webapp-dev is missing the kubectl.kubernetes.io/last-applied-configuration annotation which is required by kubectl apply. kubectl apply should only be used on resources c
+deployment.apps/webapp-dev configured (server dry run)
+The Service "webapp-dev" is invalid: spec.ports[0].nodePort: Invalid value: 30080: provided port is already allocated
+

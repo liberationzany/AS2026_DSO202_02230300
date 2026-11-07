@@ -1,0 +1,30 @@
+$ helm package ./webapp -d <out>
+Successfully packaged chart and saved it to: <out>\webapp-0.1.0.tgz
+
+$ tar --force-local -tzf <out>/webapp-0.1.0.tgz
+webapp/Chart.yaml
+webapp/values.yaml
+webapp/values.schema.json
+webapp/templates/NOTES.txt
+webapp/templates/_helpers.tpl
+webapp/templates/configmap.yaml
+webapp/templates/deployment.yaml
+webapp/templates/service.yaml
+webapp/templates/tests/test-connection.yaml
+webapp/.helmignore
+
+$ helm uninstall webapp-dev -n dso202-dev; helm uninstall webapp-prod -n dso202-prod
+release "webapp-dev" uninstalled
+release "webapp-prod" uninstalled
+
+$ kubectl delete namespace dso202-dev dso202-prod dso202-helm
+namespace "dso202-dev" deleted
+namespace "dso202-prod" deleted
+namespace "dso202-helm" deleted
+
+$ helm list -A
+NAME	NAMESPACE	REVISION	UPDATED	STATUS	CHART	APP VERSION
+
+$ kubectl get ns | grep -E 'dso202-(dev|prod|helm)' || echo 'no Practical 6 namespaces remain'
+no Practical 6 namespaces remain
+

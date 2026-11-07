@@ -1,0 +1,23 @@
+$ helm create scaffold
+Creating scaffold
+
+$ find scaffold -type f | sort
+scaffold/.helmignore
+scaffold/Chart.yaml
+scaffold/templates/NOTES.txt
+scaffold/templates/_helpers.tpl
+scaffold/templates/deployment.yaml
+scaffold/templates/hpa.yaml
+scaffold/templates/httproute.yaml
+scaffold/templates/ingress.yaml
+scaffold/templates/service.yaml
+scaffold/templates/serviceaccount.yaml
+scaffold/templates/tests/test-connection.yaml
+scaffold/values.yaml
+
+$ rm -rf scaffold && mkdir -p webapp/templates/tests webapp/charts && find webapp | sort
+webapp
+webapp/charts
+webapp/templates
+webapp/templates/tests
+
