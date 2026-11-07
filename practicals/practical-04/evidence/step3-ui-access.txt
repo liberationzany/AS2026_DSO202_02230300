@@ -1,0 +1,21 @@
+$ kubectl -n argocd wait --for=condition=Ready pod -l app.kubernetes.io/name=argocd-server --timeout=300s
+pod/argocd-server-67795db55d-7nfpc condition met
+
+$ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d | wc -c | xargs echo 'initial admin password length (value not recorded):'
+initial admin password length (value not recorded): 16
+
+$ kubectl -n argocd get svc argocd-server
+NAME            TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)          AGE
+argocd-server   ClusterIP   10.96.96.45   <none>        80/TCP,443/TCP   48m
+
+$ curl -sk -o /dev/null -w 'https://localhost:8080 -> HTTP %{http_code}\n' https://localhost:8080/
+https://localhost:8080 -> HTTP 200
+
+$ echo 'POST /api/v1/session as admin -> token length:' 257
+POST /api/v1/session as admin -> token length: 257
+
+$ curl -sk https://localhost:8080/api/version | python -m json.tool | head -5
+{
+    "Version": "v3.6.1"
+}
+

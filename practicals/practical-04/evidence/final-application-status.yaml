@@ -1,0 +1,149 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"argoproj.io/v1alpha1","kind":"Application","metadata":{"annotations":{},"name":"my-webapp","namespace":"argocd"},"spec":{"destination":{"namespace":"demo-app","server":"https://kubernetes.default.svc"},"project":"default","source":{"path":"practicals/practical-04/gitops/manifests","repoURL":"https://github.com/liberationzany/AS2026_DSO202_02230300.git","targetRevision":"main"},"syncPolicy":{"automated":{"prune":true,"selfHeal":true},"syncOptions":["CreateNamespace=true"]}}}
+  creationTimestamp: "2026-11-07T15:39:17Z"
+  generation: 47
+  name: my-webapp
+  namespace: argocd
+  resourceVersion: "221711"
+  uid: 9c945830-62b3-475d-8907-4142d28836a8
+spec:
+  destination:
+    namespace: demo-app
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    path: practicals/practical-04/gitops/manifests
+    repoURL: https://github.com/liberationzany/AS2026_DSO202_02230300.git
+    targetRevision: main
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+status:
+  controllerNamespace: argocd
+  health:
+    lastTransitionTime: "2026-11-07T15:40:49Z"
+    status: Healthy
+  history:
+  - deployStartedAt: "2026-11-07T15:39:20Z"
+    deployedAt: "2026-11-07T15:39:20Z"
+    id: 0
+    initiatedBy:
+      automated: true
+    revision: e99c1c5ee75fc434a70045f2071f5bf9bea8afa9
+    source:
+      path: practicals/practical-04/gitops/manifests
+      repoURL: https://github.com/liberationzany/AS2026_DSO202_02230300.git
+      targetRevision: main
+  - deployStartedAt: "2026-11-07T15:40:28Z"
+    deployedAt: "2026-11-07T15:40:28Z"
+    id: 1
+    initiatedBy:
+      automated: true
+    revision: 612aa56f3411581484979d35827b5222f7608025
+    source:
+      path: practicals/practical-04/gitops/manifests
+      repoURL: https://github.com/liberationzany/AS2026_DSO202_02230300.git
+      targetRevision: main
+  - deployStartedAt: "2026-11-07T15:41:35Z"
+    deployedAt: "2026-11-07T15:41:35Z"
+    id: 2
+    initiatedBy:
+      automated: true
+    revision: 09f9223f58c0acabcd18927016ff374f5ef28f3a
+    source:
+      path: practicals/practical-04/gitops/manifests
+      repoURL: https://github.com/liberationzany/AS2026_DSO202_02230300.git
+      targetRevision: main
+  - deployStartedAt: "2026-11-07T15:41:54Z"
+    deployedAt: "2026-11-07T15:41:55Z"
+    id: 3
+    initiatedBy:
+      automated: true
+    revision: 2b494cdcf77faad90cee57b9c2050d4cc89dddbd
+    source:
+      path: practicals/practical-04/gitops/manifests
+      repoURL: https://github.com/liberationzany/AS2026_DSO202_02230300.git
+      targetRevision: main
+  operationState:
+    finishedAt: "2026-11-07T15:41:55Z"
+    message: successfully synced (all tasks run)
+    operation:
+      initiatedBy:
+        automated: true
+      retry:
+        limit: 5
+      sync:
+        prune: true
+        revision: 2b494cdcf77faad90cee57b9c2050d4cc89dddbd
+        source:
+          path: practicals/practical-04/gitops/manifests
+          repoURL: https://github.com/liberationzany/AS2026_DSO202_02230300.git
+          targetRevision: main
+        syncOptions:
+        - CreateNamespace=true
+    phase: Succeeded
+    startedAt: "2026-11-07T15:41:54Z"
+    syncResult:
+      resources:
+      - group: ""
+        hookPhase: Running
+        kind: Service
+        message: service/webapp-svc created
+        name: webapp-svc
+        namespace: demo-app
+        status: Synced
+        syncPhase: Sync
+        version: v1
+      - group: apps
+        hookPhase: Running
+        images:
+        - nginxdemos/hello:plain-text
+        kind: Deployment
+        message: deployment.apps/webapp-deploy unchanged
+        name: webapp-deploy
+        namespace: demo-app
+        status: Synced
+        syncPhase: Sync
+        version: v1
+      revision: 2b494cdcf77faad90cee57b9c2050d4cc89dddbd
+      source:
+        path: practicals/practical-04/gitops/manifests
+        repoURL: https://github.com/liberationzany/AS2026_DSO202_02230300.git
+        targetRevision: main
+  reconciledAt: "2026-11-07T15:41:55Z"
+  resourceHealthSource: appTree
+  resources:
+  - kind: Service
+    name: webapp-svc
+    namespace: demo-app
+    status: Synced
+    version: v1
+  - group: apps
+    kind: Deployment
+    name: webapp-deploy
+    namespace: demo-app
+    status: Synced
+    version: v1
+  sourceHydrator: {}
+  sourceType: Directory
+  summary:
+    images:
+    - nginxdemos/hello:plain-text
+  sync:
+    comparedTo:
+      destination:
+        namespace: demo-app
+        server: https://kubernetes.default.svc
+      source:
+        path: practicals/practical-04/gitops/manifests
+        repoURL: https://github.com/liberationzany/AS2026_DSO202_02230300.git
+        targetRevision: main
+    revision: 2b494cdcf77faad90cee57b9c2050d4cc89dddbd
+    status: Synced

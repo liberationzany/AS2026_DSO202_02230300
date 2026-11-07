@@ -1,0 +1,131 @@
+$ kubectl config current-context
+kind-dso202
+
+$ kubectl create namespace argocd
+namespace/argocd created
+
+$ kubectl apply -n argocd --server-side --force-conflicts -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml | tail -n 15
+service/argocd-server-metrics serverside-applied
+deployment.apps/argocd-applicationset-controller serverside-applied
+deployment.apps/argocd-dex-server serverside-applied
+deployment.apps/argocd-notifications-controller serverside-applied
+deployment.apps/argocd-redis serverside-applied
+deployment.apps/argocd-repo-server serverside-applied
+deployment.apps/argocd-server serverside-applied
+statefulset.apps/argocd-application-controller serverside-applied
+networkpolicy.networking.k8s.io/argocd-application-controller-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-applicationset-controller-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-dex-server-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-notifications-controller-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-redis-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-repo-server-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-server-network-policy serverside-applied
+
+$ kubectl wait --for=condition=Ready pods --all -n argocd --timeout=420s
+timed out waiting for the condition on pods/argocd-application-controller-0
+timed out waiting for the condition on pods/argocd-applicationset-controller-f6bc6968d-zgr8f
+timed out waiting for the condition on pods/argocd-dex-server-55b9777447-8gjcn
+timed out waiting for the condition on pods/argocd-notifications-controller-b9499f64b-k6z66
+timed out waiting for the condition on pods/argocd-redis-79f897d5d9-xr856
+timed out waiting for the condition on pods/argocd-repo-server-75fcf89b6b-969gh
+timed out waiting for the condition on pods/argocd-server-67795db55d-7nfpc
+
+$ kubectl get pods -n argocd
+NAME                                               READY   STATUS              RESTARTS   AGE
+argocd-application-controller-0                    0/1     ContainerCreating   0          7m36s
+argocd-applicationset-controller-f6bc6968d-zgr8f   0/1     ContainerCreating   0          7m36s
+argocd-dex-server-55b9777447-8gjcn                 0/1     Init:0/1            0          7m36s
+argocd-notifications-controller-b9499f64b-k6z66    0/1     ContainerCreating   0          7m36s
+argocd-redis-79f897d5d9-xr856                      0/1     Init:0/1            0          7m36s
+argocd-repo-server-75fcf89b6b-969gh                0/1     Init:0/1            0          7m36s
+argocd-server-67795db55d-7nfpc                     0/1     ContainerCreating   0          7m36s
+
+$ kubectl get crd | grep argoproj
+applications.argoproj.io        2026-11-07T14:49:52Z
+applicationsets.argoproj.io     2026-11-07T14:49:52Z
+appprojects.argoproj.io         2026-11-07T14:49:52Z
+
+$ kubectl -n argocd get deploy argocd-server -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
+quay.io/argoproj/argocd:v3.6.1
+
+$ kubectl -n argocd describe pod argocd-server-67795db55d-7nfpc | tail -n 8
+Node-Selectors:              kubernetes.io/os=linux
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type    Reason     Age    From               Message
+  ----    ------     ----   ----               -------
+  Normal  Scheduled  7m39s  default-scheduler  Successfully assigned argocd/argocd-server-67795db55d-7nfpc to worker-node-2
+  Normal  Pulling    7m39s  kubelet            spec.containers{argocd-server}: Pulling image "quay.io/argoproj/argocd:v3.6.1"
+
+$ kubectl wait --for=condition=Ready pods --all -n argocd --timeout=590s
+timed out waiting for the condition on pods/argocd-application-controller-0
+timed out waiting for the condition on pods/argocd-applicationset-controller-f6bc6968d-zgr8f
+timed out waiting for the condition on pods/argocd-dex-server-55b9777447-8gjcn
+timed out waiting for the condition on pods/argocd-notifications-controller-b9499f64b-k6z66
+timed out waiting for the condition on pods/argocd-redis-79f897d5d9-xr856
+timed out waiting for the condition on pods/argocd-repo-server-75fcf89b6b-969gh
+timed out waiting for the condition on pods/argocd-server-67795db55d-7nfpc
+
+$ kubectl get pods -n argocd -o wide
+NAME                                               READY   STATUS              RESTARTS   AGE   IP       NODE            NOMINATED NODE   READINESS GATES
+argocd-application-controller-0                    0/1     ContainerCreating   0          17m   <none>   worker-node-1   <none>           <none>
+argocd-applicationset-controller-f6bc6968d-zgr8f   0/1     ContainerCreating   0          17m   <none>   worker-node-2   <none>           <none>
+argocd-dex-server-55b9777447-8gjcn                 0/1     Init:0/1            0          17m   <none>   worker-node-2   <none>           <none>
+argocd-notifications-controller-b9499f64b-k6z66    0/1     ContainerCreating   0          17m   <none>   worker-node-1   <none>           <none>
+argocd-redis-79f897d5d9-xr856                      0/1     Init:0/1            0          17m   <none>   worker-node-1   <none>           <none>
+argocd-repo-server-75fcf89b6b-969gh                0/1     Init:0/1            0          17m   <none>   worker-node-1   <none>           <none>
+argocd-server-67795db55d-7nfpc                     0/1     ContainerCreating   0          17m   <none>   worker-node-2   <none>           <none>
+
+$ kubectl wait --for=condition=Ready pods --all -n argocd --timeout=590s
+pod/argocd-application-controller-0 condition met
+pod/argocd-applicationset-controller-f6bc6968d-zgr8f condition met
+timed out waiting for the condition on pods/argocd-dex-server-55b9777447-8gjcn
+timed out waiting for the condition on pods/argocd-notifications-controller-b9499f64b-k6z66
+timed out waiting for the condition on pods/argocd-redis-79f897d5d9-xr856
+timed out waiting for the condition on pods/argocd-repo-server-75fcf89b6b-969gh
+timed out waiting for the condition on pods/argocd-server-67795db55d-7nfpc
+
+$ kubectl get pods -n argocd -o wide
+NAME                                               READY   STATUS                       RESTARTS   AGE   IP           NODE            NOMINATED NODE   READINESS GATES
+argocd-application-controller-0                    1/1     Running                      0          38m   10.244.2.8   worker-node-1   <none>           <none>
+argocd-applicationset-controller-f6bc6968d-zgr8f   1/1     Running                      0          38m   10.244.1.7   worker-node-2   <none>           <none>
+argocd-dex-server-55b9777447-8gjcn                 0/1     PodInitializing              0          38m   10.244.1.8   worker-node-2   <none>           <none>
+argocd-notifications-controller-b9499f64b-k6z66    1/1     Running                      0          38m   10.244.2.6   worker-node-1   <none>           <none>
+argocd-redis-79f897d5d9-xr856                      0/1     PodInitializing              0          38m   10.244.2.5   worker-node-1   <none>           <none>
+argocd-repo-server-75fcf89b6b-969gh                1/1     Running                      0          38m   10.244.2.7   worker-node-1   <none>           <none>
+argocd-server-67795db55d-7nfpc                     0/1     CreateContainerConfigError   0          38m   10.244.1.9   worker-node-2   <none>           <none>
+
+$ kubectl wait --for=condition=Ready pods --all -n argocd --timeout=590s
+pod/argocd-application-controller-0 condition met
+pod/argocd-applicationset-controller-f6bc6968d-zgr8f condition met
+pod/argocd-dex-server-55b9777447-8gjcn condition met
+pod/argocd-notifications-controller-b9499f64b-k6z66 condition met
+pod/argocd-redis-79f897d5d9-xr856 condition met
+pod/argocd-repo-server-75fcf89b6b-969gh condition met
+error: timed out waiting for the condition on pods/argocd-server-67795db55d-7nfpc
+
+$ kubectl get pods -n argocd -o wide
+NAME                                               READY   STATUS    RESTARTS      AGE   IP           NODE            NOMINATED NODE   READINESS GATES
+argocd-application-controller-0                    1/1     Running   0             48m   10.244.2.8   worker-node-1   <none>           <none>
+argocd-applicationset-controller-f6bc6968d-zgr8f   1/1     Running   0             48m   10.244.1.7   worker-node-2   <none>           <none>
+argocd-dex-server-55b9777447-8gjcn                 1/1     Running   1 (24s ago)   48m   10.244.1.8   worker-node-2   <none>           <none>
+argocd-notifications-controller-b9499f64b-k6z66    1/1     Running   0             48m   10.244.2.6   worker-node-1   <none>           <none>
+argocd-redis-79f897d5d9-xr856                      1/1     Running   0             48m   10.244.2.5   worker-node-1   <none>           <none>
+argocd-repo-server-75fcf89b6b-969gh                1/1     Running   0             48m   10.244.2.7   worker-node-1   <none>           <none>
+argocd-server-67795db55d-7nfpc                     0/1     Running   0             48m   10.244.1.9   worker-node-2   <none>           <none>
+
+
+# --- Side investigation, run in parallel with the waits above -----------
+# In-node image pulls looked stuck, so the Argo CD image was also pulled on
+# the host to test the network. Its output was originally interleaved with
+# the 'kubectl wait' output above and has been moved here unchanged.
+$ time docker pull -q quay.io/argoproj/argocd:v3.6.1
+quay.io/argoproj/argocd:v3.6.1
+
+real	21m40.097s
+user	0m0.030s
+sys	0m0.061s
+
+$ time docker pull -q ghcr.io/dexidp/dex:v2.46.0
+(stopped by hand: the in-node pulls had finished, so the host copy was no longer needed)

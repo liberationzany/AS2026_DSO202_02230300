@@ -1,0 +1,65 @@
+$ kubectl get svc -n demo-app
+NAME         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE
+webapp-svc   ClusterIP   10.96.248.134   <none>        80/TCP    2m9s
+
+$ git -C ../.. rm -q practicals/practical-04/gitops/manifests/service.yaml && git -C ../.. commit -q -m 'practical-04 exp3: remove webapp Service from Git (prune test)' && git -C ../.. show --stat --oneline HEAD | head -3
+09f9223 practical-04 exp3: remove webapp Service from Git (prune test)
+ .../practical-04/gitops/manifests/service.yaml     | 28 ----------------------
+ 1 file changed, 28 deletions(-)
+
+$ git -C ../.. push origin main 2>&1 | tail -1
+   612aa56..09f9223  main -> main
+
+$ kubectl -n argocd annotate application my-webapp argocd.argoproj.io/refresh=normal --overwrite
+application.argoproj.io/my-webapp annotated
+
+$ kubectl get svc -n demo-app
+No resources found in demo-app namespace.
+
+$ kubectl -n argocd get application my-webapp -o jsonpath='sync={.status.sync.status} health={.status.health.status} revision={.status.sync.revision}{"\n"}'
+sync=Synced health=Healthy revision=09f9223f58c0acabcd18927016ff374f5ef28f3a
+
+$ kubectl -n argocd logs statefulset/argocd-application-controller --since=3m | grep 'my-webapp' | grep -i 'prune\|deleted\|webapp-svc' | python -c "import sys,json
+for l in sys.stdin:
+  try: d=json.loads(l); print(d.get('time'), '|', d.get('msg')[:200])
+  except Exception: pass" | tail -n 6
+2026-11-07T15:40:47Z | Initialized new operation: {&SyncOperation{Revision:612aa56f3411581484979d35827b5222f7608025,Prune:true,DryRun:false,SyncStrategy:nil,Resources:[]SyncOperationResource{SyncOperationResource{Group:apps
+2026-11-07T15:41:35Z | Initialized new operation: {&SyncOperation{Revision:09f9223f58c0acabcd18927016ff374f5ef28f3a,Prune:true,DryRun:false,SyncStrategy:nil,Resources:[]SyncOperationResource{},Source:&ApplicationSource{Repo
+2026-11-07T15:41:35Z | Tasks (dry-run)
+2026-11-07T15:41:35Z | Adding resource result, status: 'Pruned', phase: 'Succeeded', message: 'pruned'
+2026-11-07T15:41:35Z | Requesting app refresh caused by object update
+2026-11-07T15:41:35Z | Requesting app refresh caused by object update
+
+$ git -C ../.. revert --no-edit HEAD | head -2
+[main 2b494cd] Revert "practical-04 exp3: remove webapp Service from Git (prune test)"
+ Date: Sat Nov 7 21:41:44 2026 +0600
+
+$ git -C ../.. push origin main 2>&1 | tail -1
+   09f9223..2b494cd  main -> main
+
+$ kubectl -n argocd annotate application my-webapp argocd.argoproj.io/refresh=normal --overwrite
+application.argoproj.io/my-webapp annotated
+
+$ kubectl get svc -n demo-app
+NAME         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE
+webapp-svc   ClusterIP   10.96.214.137   <none>        80/TCP    0s
+
+$ kubectl -n argocd get application my-webapp -o jsonpath='sync={.status.sync.status} health={.status.health.status} revision={.status.sync.revision}{"\n"}'
+sync=Synced health=Healthy revision=2b494cdcf77faad90cee57b9c2050d4cc89dddbd
+
+$ kubectl run probe --rm -i --restart=Never --image=busybox:1.37 -n demo-app -- wget -qO- http://webapp-svc 2>&1 | grep -i 'server name\|server address' 
+Server address: 10.244.2.11:80
+Server name: webapp-deploy-749f746dd4-925b4
+
+$ kubectl -n argocd get application my-webapp -o jsonpath='{range .status.history[*]}id={.id} revision={.revision} deployedAt={.deployedAt}{"\n"}{end}'
+id=0 revision=e99c1c5ee75fc434a70045f2071f5bf9bea8afa9 deployedAt=2026-11-07T15:39:20Z
+id=1 revision=612aa56f3411581484979d35827b5222f7608025 deployedAt=2026-11-07T15:40:28Z
+id=2 revision=09f9223f58c0acabcd18927016ff374f5ef28f3a deployedAt=2026-11-07T15:41:35Z
+id=3 revision=2b494cdcf77faad90cee57b9c2050d4cc89dddbd deployedAt=2026-11-07T15:41:55Z
+
+$ git -C ../.. log --oneline -6 -- practicals/practical-04/gitops
+2b494cd Revert "practical-04 exp3: remove webapp Service from Git (prune test)"
+09f9223 practical-04 exp3: remove webapp Service from Git (prune test)
+612aa56 practical-04 exp1: scale webapp from 2 to 4 replicas via Git
+e99c1c5 practical-04: initial GitOps desired state (webapp, 2 replicas) and Argo CD Application
+

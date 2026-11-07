@@ -1,0 +1,32 @@
+$ git -C ../.. show --stat --oneline HEAD | head -3; git -C ../.. diff HEAD~1 HEAD -- practicals/practical-04/gitops/manifests/deployment.yaml | grep '^[-+] *replicas'
+612aa56 practical-04 exp1: scale webapp from 2 to 4 replicas via Git
+ practicals/practical-04/gitops/manifests/deployment.yaml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+-  replicas: 2
++  replicas: 4
+
+$ git -C ../.. push origin main 2>&1 | tail -1
+   e99c1c5..612aa56  main -> main
+
+$ kubectl get pods -n demo-app
+NAME                             READY   STATUS    RESTARTS   AGE
+webapp-deploy-749f746dd4-c86fs   1/1     Running   0          66s
+webapp-deploy-749f746dd4-vbsg5   1/1     Running   0          66s
+
+$ kubectl -n argocd annotate application my-webapp argocd.argoproj.io/refresh=normal --overwrite
+application.argoproj.io/my-webapp annotated
+
+$ kubectl -n argocd get application my-webapp -o jsonpath='sync={.status.sync.status} health={.status.health.status} revision={.status.sync.revision}{"\n"}'
+sync=Synced health=Healthy revision=612aa56f3411581484979d35827b5222f7608025
+
+$ kubectl get pods -n demo-app -o wide
+NAME                             READY   STATUS    RESTARTS   AGE   IP            NODE            NOMINATED NODE   READINESS GATES
+webapp-deploy-749f746dd4-c86fs   1/1     Running   0          76s   10.244.1.10   worker-node-2   <none>           <none>
+webapp-deploy-749f746dd4-nrfhh   1/1     Running   0          8s    10.244.2.10   worker-node-1   <none>           <none>
+webapp-deploy-749f746dd4-vbsg5   1/1     Running   0          76s   10.244.2.9    worker-node-1   <none>           <none>
+webapp-deploy-749f746dd4-w7jnm   1/1     Running   0          8s    10.244.1.11   worker-node-2   <none>           <none>
+
+$ kubectl -n argocd get application my-webapp -o jsonpath='{range .status.history[*]}id={.id} revision={.revision} deployedAt={.deployedAt}{"\n"}{end}'
+id=0 revision=e99c1c5ee75fc434a70045f2071f5bf9bea8afa9 deployedAt=2026-11-07T15:39:20Z
+id=1 revision=612aa56f3411581484979d35827b5222f7608025 deployedAt=2026-11-07T15:40:28Z
+

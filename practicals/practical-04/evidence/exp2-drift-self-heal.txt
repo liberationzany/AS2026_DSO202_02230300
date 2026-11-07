@@ -1,0 +1,61 @@
+$ date -u +%H:%M:%S; kubectl scale deployment webapp-deploy -n demo-app --replicas=1
+15:40:42
+deployment.apps/webapp-deploy scaled
+
+$ for i in 1 2 3 4 5 6 7 8 9 10; do echo "$(date -u +%H:%M:%S) spec.replicas=$(kubectl -n demo-app get deploy webapp-deploy -o jsonpath='{.spec.replicas}') ready=$(kubectl -n demo-app get deploy webapp-deploy -o jsonpath='{.status.readyReplicas}') app=$(kubectl -n argocd get application my-webapp -o jsonpath='{.status.sync.status}/{.status.health.status}')"; sleep 1; done
+15:40:42 spec.replicas=1 ready=1 app=Synced/Progressing
+15:40:44 spec.replicas=4 ready=3 app=Synced/Progressing
+15:40:45 spec.replicas=4 ready=4 app=Synced/Healthy
+15:40:47 spec.replicas=4 ready=4 app=Synced/Healthy
+15:40:48 spec.replicas=4 ready=4 app=Synced/Healthy
+15:40:50 spec.replicas=4 ready=4 app=Synced/Healthy
+15:40:51 spec.replicas=4 ready=4 app=Synced/Healthy
+15:40:53 spec.replicas=4 ready=4 app=Synced/Healthy
+15:40:54 spec.replicas=4 ready=4 app=Synced/Healthy
+15:40:56 spec.replicas=4 ready=4 app=Synced/Healthy
+
+$ kubectl get deploy webapp-deploy -n demo-app
+NAME            READY   UP-TO-DATE   AVAILABLE   AGE
+webapp-deploy   4/4     4            4           110s
+
+$ kubectl get pods -n demo-app
+NAME                             READY   STATUS    RESTARTS   AGE
+webapp-deploy-749f746dd4-925b4   1/1     Running   0          23s
+webapp-deploy-749f746dd4-dz99b   1/1     Running   0          23s
+webapp-deploy-749f746dd4-nfj9r   1/1     Running   0          23s
+webapp-deploy-749f746dd4-vbsg5   1/1     Running   0          110s
+
+$ kubectl -n argocd get application my-webapp -o jsonpath='sync={.status.sync.status} health={.status.health.status}{"\n"}'
+sync=Synced health=Healthy
+
+$ kubectl get events -n demo-app --sort-by=.lastTimestamp | grep -i 'scaled' | tail -n 6
+110s        Normal    ScalingReplicaSet   deployment/webapp-deploy              Scaled up replica set webapp-deploy-749f746dd4 from 0 to 2
+42s         Normal    ScalingReplicaSet   deployment/webapp-deploy              Scaled up replica set webapp-deploy-749f746dd4 from 2 to 4
+23s         Normal    ScalingReplicaSet   deployment/webapp-deploy              Scaled up replica set webapp-deploy-749f746dd4 from 1 to 4
+23s         Normal    ScalingReplicaSet   deployment/webapp-deploy              Scaled down replica set webapp-deploy-749f746dd4 from 4 to 1
+
+$ kubectl -n argocd logs statefulset/argocd-application-controller --since=3m | grep -i 'my-webapp' | grep -i 'self\|sync\|heal' | tail -n 6 | cut -c1-300
+{"app-namespace":"argocd","app_status_update_ms":0,"application":"my-webapp","auto_sync_ms":0,"compare_app_state_ms":12,"comparison-level":1,"comparison_with_nothing_ms":0,"dedup_ms":0,"dest-name":"","dest-namespace":"demo-app","dest-server":"https://kubernetes.default.svc","diff_ms":4,"git_ms":7,"h
+{"app-namespace":"argocd","application":"my-webapp","level":"info","msg":"Skipping auto-sync: application status is Synced","project":"default","time":"2026-11-07T15:40:47Z"}
+{"app-namespace":"argocd","app_status_update_ms":0,"application":"my-webapp","auto_sync_ms":0,"compare_app_state_ms":13,"comparison-level":2,"comparison_with_nothing_ms":0,"dedup_ms":0,"dest-name":"","dest-namespace":"demo-app","dest-server":"https://kubernetes.default.svc","diff_ms":0,"git_ms":11,"
+{"app-namespace":"argocd","application":"my-webapp","level":"info","msg":"Skipping auto-sync: application status is Synced","project":"default","time":"2026-11-07T15:40:49Z"}
+{"application":"my-webapp","dest-namespace":"demo-app","dest-server":"https://kubernetes.default.svc","level":"info","msg":"Updated health status: Progressing -\u003e Healthy","reason":"ResourceUpdated","time":"2026-11-07T15:40:49Z","type":"Normal"}
+{"app-namespace":"argocd","app_status_update_ms":0,"application":"my-webapp","auto_sync_ms":0,"compare_app_state_ms":7,"comparison-level":1,"comparison_with_nothing_ms":0,"dedup_ms":0,"dest-name":"","dest-namespace":"demo-app","dest-server":"https://kubernetes.default.svc","diff_ms":2,"git_ms":4,"he
+
+$ kubectl -n argocd logs statefulset/argocd-application-controller --since=10m | grep 'my-webapp' | grep -i 'OutOfSync\|Initiated automated sync\|self-heal\|selfheal\|Partial sync\|sync operation' | python -c "import sys,json
+for l in sys.stdin:
+  try: d=json.loads(l); print(d.get('time'), '|', d.get('msg'))
+  except Exception: pass" | tail -n 12
+2026-11-07T15:40:28Z | Sync operation to 612aa56f3411581484979d35827b5222f7608025 succeeded
+2026-11-07T15:40:28Z | Initiated automated sync to '612aa56f3411581484979d35827b5222f7608025'
+2026-11-07T15:40:28Z | Initiated automated sync to '612aa56f3411581484979d35827b5222f7608025'
+2026-11-07T15:40:28Z | Initialized new operation: {&SyncOperation{Revision:612aa56f3411581484979d35827b5222f7608025,Prune:true,DryRun:false,SyncStrategy:nil,Resources:[]SyncOperationResource{SyncOperationResource{Group:apps,Kind:Deployment,Name:webapp-deploy,Namespace:,},},Source:&ApplicationSource{RepoURL:https://github.com/liberationzany/AS2026_DSO202_02230300.git,Path:practicals/practical-04/gitops/manifests,TargetRevision:main,Helm:nil,Kustomize:nil,Directory:nil,Plugin:nil,Chart:,Ref:,Name:,TagPrefix:,},Manifests:[],SyncOptions:[CreateNamespace=true],Sources:[]ApplicationSource{},Revisions:[],SelfHealAttemptsCount:1,} { true} [] {5 nil false}}
+2026-11-07T15:40:28Z | Updated sync status: OutOfSync -> Synced
+2026-11-07T15:40:29Z | Partial sync operation to 612aa56f3411581484979d35827b5222f7608025 succeeded
+2026-11-07T15:40:47Z | Initiated automated sync to '612aa56f3411581484979d35827b5222f7608025'
+2026-11-07T15:40:47Z | Initiated automated sync to '612aa56f3411581484979d35827b5222f7608025'
+2026-11-07T15:40:47Z | Updated sync status: Synced -> OutOfSync
+2026-11-07T15:40:47Z | Initialized new operation: {&SyncOperation{Revision:612aa56f3411581484979d35827b5222f7608025,Prune:true,DryRun:false,SyncStrategy:nil,Resources:[]SyncOperationResource{SyncOperationResource{Group:apps,Kind:Deployment,Name:webapp-deploy,Namespace:,},},Source:&ApplicationSource{RepoURL:https://github.com/liberationzany/AS2026_DSO202_02230300.git,Path:practicals/practical-04/gitops/manifests,TargetRevision:main,Helm:nil,Kustomize:nil,Directory:nil,Plugin:nil,Chart:,Ref:,Name:,TagPrefix:,},Manifests:[],SyncOptions:[CreateNamespace=true],Sources:[]ApplicationSource{},Revisions:[],SelfHealAttemptsCount:2,} { true} [] {5 nil false}}
+2026-11-07T15:40:47Z | Partial sync operation to 612aa56f3411581484979d35827b5222f7608025 succeeded
+2026-11-07T15:40:47Z | Updated sync status: OutOfSync -> Synced
+

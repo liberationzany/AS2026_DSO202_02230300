@@ -1,0 +1,8 @@
+NAME                                               READY   STATUS    RESTARTS        AGE   IP           NODE            NOMINATED NODE   READINESS GATES
+argocd-application-controller-0                    1/1     Running   0               52m   10.244.2.8   worker-node-1   <none>           <none>
+argocd-applicationset-controller-f6bc6968d-zgr8f   1/1     Running   0               52m   10.244.1.7   worker-node-2   <none>           <none>
+argocd-dex-server-55b9777447-8gjcn                 1/1     Running   1 (4m19s ago)   52m   10.244.1.8   worker-node-2   <none>           <none>
+argocd-notifications-controller-b9499f64b-k6z66    1/1     Running   0               52m   10.244.2.6   worker-node-1   <none>           <none>
+argocd-redis-79f897d5d9-xr856                      1/1     Running   0               52m   10.244.2.5   worker-node-1   <none>           <none>
+argocd-repo-server-75fcf89b6b-969gh                1/1     Running   0               52m   10.244.2.7   worker-node-1   <none>           <none>
+argocd-server-67795db55d-7nfpc                     1/1     Running   0               52m   10.244.1.9   worker-node-2   <none>           <none>

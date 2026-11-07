@@ -1,0 +1,36 @@
+$ git -C ../.. log --oneline -1 -- practicals/practical-04/gitops
+e99c1c5 practical-04: initial GitOps desired state (webapp, 2 replicas) and Argo CD Application
+
+$ kubectl apply -f argocd/argocd-app.yaml
+application.argoproj.io/my-webapp created
+
+$ kubectl -n argocd get application my-webapp
+NAME        SYNC STATUS   HEALTH STATUS
+my-webapp   Synced        Healthy
+
+$ kubectl -n argocd get application my-webapp -o jsonpath='revision={.status.sync.revision}{"\n"}path={.spec.source.path}{"\n"}'
+revision=e99c1c5ee75fc434a70045f2071f5bf9bea8afa9
+path=practicals/practical-04/gitops/manifests
+
+$ kubectl get ns demo-app
+NAME       STATUS   AGE
+demo-app   Active   50s
+
+$ kubectl get deploy,rs,pods,svc -n demo-app -o wide
+NAME                            READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES                        SELECTOR
+deployment.apps/webapp-deploy   2/2     2            2           50s   webapp       nginxdemos/hello:plain-text   app=webapp
+
+NAME                                       DESIRED   CURRENT   READY   AGE   CONTAINERS   IMAGES                        SELECTOR
+replicaset.apps/webapp-deploy-749f746dd4   2         2         2       50s   webapp       nginxdemos/hello:plain-text   app=webapp,pod-template-hash=749f746dd4
+
+NAME                                 READY   STATUS    RESTARTS   AGE   IP            NODE            NOMINATED NODE   READINESS GATES
+pod/webapp-deploy-749f746dd4-c86fs   1/1     Running   0          50s   10.244.1.10   worker-node-2   <none>           <none>
+pod/webapp-deploy-749f746dd4-vbsg5   1/1     Running   0          50s   10.244.2.9    worker-node-1   <none>           <none>
+
+NAME                 TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE   SELECTOR
+service/webapp-svc   ClusterIP   10.96.248.134   <none>        80/TCP    50s   app=webapp
+
+$ kubectl -n argocd get application my-webapp -o jsonpath='{range .status.resources[*]}{.kind}/{.name}  sync={.status}  health={.health.status}{"\n"}{end}'
+Service/webapp-svc  sync=Synced  health=
+Deployment/webapp-deploy  sync=Synced  health=
+
