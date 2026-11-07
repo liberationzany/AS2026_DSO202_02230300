@@ -1,0 +1,33 @@
+# =============================================================================
+# File        : manifests/05-service-db.yaml
+# Apply with  : kubectl apply -f manifests/05-service-db.yaml
+# Verify with : kubectl get endpointslice -n dso202-assignment-1 \
+#                 -l kubernetes.io/service-name=db-svc
+#
+# DNS NAME CREATED: db-svc.dso202-assignment-1.svc.cluster.local
+#
+# Never NodePort or LoadBalancer -- the database must not be reachable from
+# outside the cluster (3.3). clusterIP: None makes this headless: DNS
+# resolves db-svc directly to the backing Pod's IP instead of a virtual IP,
+# which is what DB_HOST relies on.
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: db-svc
+  namespace: dso202-assignment-1
+  labels:
+    app: db
+    tier: database
+    dso202/assignment: "1"
+    dso202/managed-by: declarative
+spec:
+  clusterIP: None
+  selector:
+    app: db
+    tier: database
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+      protocol: TCP

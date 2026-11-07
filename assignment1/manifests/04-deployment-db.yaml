@@ -1,0 +1,94 @@
+# =============================================================================
+# File        : manifests/04-deployment-db.yaml
+# Apply with  : kubectl apply -f manifests/04-deployment-db.yaml
+# Watch with  : kubectl rollout status deployment/db-deployment -n dso202-assignment-1
+#
+# Image: locally built from Assignment-1-app-code/db (FROM postgres:17.11-alpine
+# + seed script), tagged dso202-db:1.0 and loaded into the kind cluster with
+# 'kind load docker-image dso202-db:1.0 --name dso202' -- not pulled from a
+# registry, hence imagePullPolicy: Never.
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db-deployment
+  namespace: dso202-assignment-1
+  labels:
+    app: db
+    tier: database
+    dso202/assignment: "1"
+    dso202/managed-by: declarative
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: db
+      tier: database
+
+  strategy:
+    # A single ReadWriteOnce volume can only be mounted by one Pod at a time.
+    # RollingUpdate would try to start the replacement Pod before killing the
+    # old one and get stuck waiting for the volume; Recreate kills first.
+    type: Recreate
+
+  template:
+    metadata:
+      labels:
+        app: db
+        tier: database
+        dso202/assignment: "1"
+        dso202/managed-by: declarative
+    spec:
+      containers:
+        - name: db
+          image: dso202-db:1.0
+          imagePullPolicy: Never
+
+          ports:
+            - name: postgres
+              containerPort: 5432
+              protocol: TCP
+
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: POSTGRES_PASSWORD
+
+            # local-path-provisioner (kind's default StorageClass) can hand
+            # back a non-empty mount point (e.g. lost+found). initdb refuses
+            # to initialise a non-empty PGDATA, so PGDATA is pointed at a
+            # subdirectory of the mounted volume rather than its root -- the
+            # volume itself still lives at the contract's documented path,
+            # /var/lib/postgresql/data (3.3).
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+
+          volumeMounts:
+            - name: db-data
+              mountPath: /var/lib/postgresql/data
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+
+      volumes:
+        - name: db-data
+          persistentVolumeClaim:
+            claimName: db-data

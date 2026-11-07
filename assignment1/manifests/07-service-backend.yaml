@@ -1,0 +1,47 @@
+# =============================================================================
+# File        : manifests/07-service-backend.yaml
+# Apply with  : kubectl apply -f manifests/07-service-backend.yaml
+# Verify with : kubectl get endpointslice -n dso202-assignment-1 \
+#                 -l kubernetes.io/service-name=backend-svc
+#
+# DEVIATION FROM THE CONTRACT TABLE (4.3), DOCUMENTED:
+# Section 4.3 lists backend-svc as ClusterIP. That's correct for how the db
+# tier and other in-cluster callers would reach it, and DB_HOST-style calls
+# still work identically under NodePort -- a NodePort Service still gets a
+# ClusterIP, it just ALSO gets a port on every node.
+#
+# The reason it can't stay ClusterIP-only here: app.js runs in the BROWSER
+# and calls BACKEND_URL directly with fetch() (no reverse proxy exists in
+# nginx.conf to forward /api/* on the frontend's behalf). A ClusterIP is not
+# reachable from outside the cluster, so with the given frontend code as-is,
+# a purely ClusterIP backend leaves the browser unable to ever reach it --
+# confirmed by testing: the UI showed "backend unreachable" until this
+# Service was changed to NodePort. See README.md for the full writeup.
+#
+# nodePort 30082 is reached from the host via a small local proxy container
+# (docker run --network kind -p 30082:30082 ...), not via kind's
+# extraPortMappings -- see README.md. Not 30080 (Practical 1's web-nodeport
+# already holds it, cluster-wide) or 30081 (this assignment's own
+# frontend-svc).
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-svc
+  namespace: dso202-assignment-1
+  labels:
+    app: backend
+    tier: backend
+    dso202/assignment: "1"
+    dso202/managed-by: declarative
+spec:
+  type: NodePort
+  selector:
+    app: backend
+    tier: backend
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      nodePort: 30082
+      protocol: TCP

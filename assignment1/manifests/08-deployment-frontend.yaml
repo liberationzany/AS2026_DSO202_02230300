@@ -1,0 +1,64 @@
+# =============================================================================
+# File        : manifests/08-deployment-frontend.yaml
+# Apply with  : kubectl apply -f manifests/08-deployment-frontend.yaml
+# Watch with  : kubectl rollout status deployment/frontend-deployment -n dso202-assignment-1
+#
+# Image: locally built from Assignment-1-app-code/frontend, tagged
+# dso202-frontend:1.0 and loaded into kind with
+# 'kind load docker-image dso202-frontend:1.0 --name dso202'.
+#
+# BACKEND_URL is the only env var this tier consumes -- docker-entrypoint.sh
+# renders it into config.js via envsubst before nginx starts (3.1), so the
+# browser never talks to the Kubernetes API or the Service directly, only to
+# whatever host name is baked into that file at Pod start.
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deployment
+  namespace: dso202-assignment-1
+  labels:
+    app: frontend
+    tier: frontend
+    dso202/assignment: "1"
+    dso202/managed-by: declarative
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: frontend
+      tier: frontend
+
+  template:
+    metadata:
+      labels:
+        app: frontend
+        tier: frontend
+        dso202/assignment: "1"
+        dso202/managed-by: declarative
+    spec:
+      containers:
+        - name: frontend
+          image: dso202-frontend:1.0
+          imagePullPolicy: Never
+
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+
+          env:
+            - name: BACKEND_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: BACKEND_URL
+
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 64Mi

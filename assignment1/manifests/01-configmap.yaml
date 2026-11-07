@@ -1,0 +1,39 @@
+# =============================================================================
+# File        : manifests/01-configmap.yaml
+# Apply with  : kubectl apply -f manifests/01-configmap.yaml
+#
+# Carries every non-secret value in the Image Build Guide's env var contract
+# (Section 4.2). DB_NAME and POSTGRES_DB are deliberately duplicated under
+# different keys, holding the same value -- the backend and the official
+# postgres image each expect their own variable name, and the contract
+# requires the two to match without either side being renamed.
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: dso202-assignment-1
+  labels:
+    dso202/assignment: "1"
+    dso202/managed-by: declarative
+data:
+  # --- consumed by the backend Deployment ---
+  DB_HOST: db-svc          # matches the db headless Service name (04.3)
+  DB_PORT: "5432"
+  DB_NAME: taskdb
+  APP_PORT: "8080"
+  CORS_ORIGIN: "*"          # permissive by design for classroom simplicity (3.2)
+
+  # --- consumed by the db Deployment (official postgres image) ---
+  POSTGRES_DB: taskdb       # must equal DB_NAME above
+
+  # --- consumed by the frontend Deployment ---
+  # Rendered into config.js at container start via envsubst; never baked
+  # into the image at build time (3.1).
+  #
+  # Points at the host-reachable proxy for backend-svc's NodePort (30082),
+  # not the in-cluster DNS name -- this value is served to and executed by
+  # the BROWSER, which is outside the cluster. See 07-service-backend.yaml
+  # for why backend-svc is NodePort rather than the contract table's
+  # ClusterIP, and README.md for the full writeup.
+  BACKEND_URL: http://localhost:30082

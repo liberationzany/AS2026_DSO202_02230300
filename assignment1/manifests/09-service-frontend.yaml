@@ -1,0 +1,39 @@
+# =============================================================================
+# File        : manifests/09-service-frontend.yaml
+# Apply with  : kubectl apply -f manifests/09-service-frontend.yaml
+#
+# nodePort 30081, NOT 30080: this cluster already runs Practical 1's
+# web-nodeport Service on 30080, and a nodePort is allocated cluster-wide,
+# not per namespace -- reusing it would make the API server reject this
+# Service. 30081 is also not in the kind cluster's extraPortMappings (only
+# 30080 -> host is mapped there), so it's reached via a small local proxy
+# container instead (docker run --network kind -p 30081:30081 ...) rather
+# than kubectl port-forward or recreating the cluster -- see README.md.
+# Browse http://localhost:30081/ once that proxy is running.
+#
+# NodePort is the only tier exposed outside the cluster (2, 4.3): the
+# browser talks to this Service; this Service's backend Pod then calls
+# backend-svc; backend-svc's Pod then calls db-svc. No tier is reachable by
+# skipping the one in front of it.
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-svc
+  namespace: dso202-assignment-1
+  labels:
+    app: frontend
+    tier: frontend
+    dso202/assignment: "1"
+    dso202/managed-by: declarative
+spec:
+  type: NodePort
+  selector:
+    app: frontend
+    tier: frontend
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      nodePort: 30081
+      protocol: TCP

@@ -1,0 +1,94 @@
+# =============================================================================
+# File        : manifests/06-deployment-backend.yaml
+# Apply with  : kubectl apply -f manifests/06-deployment-backend.yaml
+# Watch with  : kubectl rollout status deployment/backend-deployment -n dso202-assignment-1
+#
+# Image: locally built from Assignment-1-app-code/backend, tagged
+# dso202-backend:1.0 and loaded into kind with
+# 'kind load docker-image dso202-backend:1.0 --name dso202'.
+#
+# No readiness/liveness probe: this assignment is scoped to Unit I, which
+# does not cover probes (3.2). The backend's own db.js retry/backoff loop is
+# what stands in for one -- it must not crash or exit if the db Pod isn't up
+# yet, so Deployment ordering is not relied on.
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+  namespace: dso202-assignment-1
+  labels:
+    app: backend
+    tier: backend
+    dso202/assignment: "1"
+    dso202/managed-by: declarative
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: backend
+      tier: backend
+
+  template:
+    metadata:
+      labels:
+        app: backend
+        tier: backend
+        dso202/assignment: "1"
+        dso202/managed-by: declarative
+    spec:
+      containers:
+        - name: backend
+          image: dso202-backend:1.0
+          imagePullPolicy: Never
+
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+
+          env:
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: DB_HOST
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: DB_PORT
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: DB_NAME
+            - name: APP_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: APP_PORT
+            - name: CORS_ORIGIN
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: CORS_ORIGIN
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: DB_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: DB_PASSWORD
+
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi

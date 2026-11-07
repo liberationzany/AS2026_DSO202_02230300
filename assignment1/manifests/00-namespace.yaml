@@ -1,0 +1,17 @@
+# =============================================================================
+# File        : manifests/00-namespace.yaml
+# Assignment  : DSO202 Assignment 1 -- Task Tracker (frontend/backend/db)
+# Apply with  : kubectl apply -f manifests/00-namespace.yaml
+# Prefix 00-  : applied first; every later object lives inside it.
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dso202-assignment-1
+  labels:
+    dso202/assignment: "1"
+    dso202/managed-by: declarative
+  annotations:
+    dso202.cst.edu.bt/description: "Namespace for DSO202 Assignment 1 Task Tracker (frontend/backend/db)"
+    dso202.cst.edu.bt/owner: "student_name"
+    dso202.cst.edu.bt/date: "2026-09-21"

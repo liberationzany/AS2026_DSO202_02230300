@@ -1,0 +1,27 @@
+# =============================================================================
+# File        : manifests/03-pvc.yaml
+# Apply with  : kubectl apply -f manifests/03-pvc.yaml
+# Verify with : kubectl get pvc -n dso202-assignment-1
+#
+# Backs /var/lib/postgresql/data so the tasks table survives Pod restarts
+# (3.3) -- data must never depend on the container's own writable layer.
+# 'kind' ships the rancher.io/local-path StorageClass by default and marks
+# it as default, so no storageClassName is given here.
+# =============================================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: db-data
+  namespace: dso202-assignment-1
+  labels:
+    dso202/assignment: "1"
+    dso202/managed-by: declarative
+spec:
+  # ReadWriteOnce: a single Pod mounts this at a time, which matches the db
+  # Deployment below (1 replica, strategy: Recreate -- two Postgres
+  # processes must never write to the same data directory concurrently).
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
