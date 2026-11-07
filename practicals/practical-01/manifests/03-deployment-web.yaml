@@ -1,0 +1,113 @@
+# =============================================================================
+# File        : manifests/03-deployment-web.yaml
+# Apply with  : kubectl apply -f manifests/03-deployment-web.yaml
+# Watch with  : kubectl rollout status deployment/web-deployment
+# Update with : kubectl set image deployment/web-deployment web=nginx:1.31-alpine
+# Undo with   : kubectl rollout undo deployment/web-deployment
+# Verify with : kubectl diff -f manifests/03-deployment-web.yaml
+#
+# OWNERSHIP CHAIN: Deployment -> ReplicaSet -> Pods
+#   The Deployment holds the update strategy and the revision history.
+#   The ReplicaSet it creates holds the replica count and does the counting.
+#   Only Pods actually run containers.
+# =============================================================================
+apiVersion: apps/v1      # NOT 'v1'. Deployments live in the 'apps' API group.
+kind: Deployment
+metadata:
+  name: web-deployment
+  namespace: dso202-practical-01
+
+  # Labels on the DEPLOYMENT object. These are for finding the Deployment
+  # itself and are separate from the labels in spec.template.metadata.labels,
+  # which land on the Pods.
+  labels:
+    app: web
+    tier: frontend
+    dso202/practical: "01"
+    dso202/managed-by: declarative
+
+spec:
+  # Desired number of Pods. The ReplicaSet's control loop counts matching Pods
+  # continuously and creates or deletes Pods until this number is reached.
+  replicas: 3
+
+  # How the Deployment finds the Pods it owns.
+  #
+  # IMMUTABLE: this field cannot be changed after creation. Changing it
+  # requires deleting and recreating the Deployment.
+  #
+  # It must also MATCH spec.template.metadata.labels below, or the API server
+  # rejects the object with 'selector does not match template labels'.
+  selector:
+    matchLabels:
+      app: web
+      tier: frontend
+
+  strategy:
+    # RollingUpdate replaces Pods incrementally. The alternative, 'Recreate',
+    # deletes every old Pod before creating any new one, which causes downtime.
+    type: RollingUpdate
+    rollingUpdate:
+      # How many replicas may be MISSING during an update.
+      # 0 means the ready count never drops below 3. The default is 25%, which
+      # would permit serving with fewer replicas mid-update.
+      #
+      # This single field is what makes the failed rollout in Stage 7 Step 15
+      # harmless: because no old Pod may be removed until a new one is ready,
+      # a new Pod that never becomes ready stalls the rollout instead of
+      # causing an outage.
+      maxUnavailable: 0
+
+      # How many replicas may exist ABOVE the desired count during an update.
+      # 1 gives the sequence: add one new Pod, wait for it to become ready,
+      # remove one old Pod, repeat.
+      maxSurge: 1
+
+  # How long a new Pod must remain ready before it counts as available. Without
+  # it, a Pod that passes one readiness check and then crashes would still
+  # advance the rollout. 5 also makes the rollout slow enough to watch.
+  minReadySeconds: 5
+
+  # How many old ReplicaSets to keep, scaled to zero, for rollback. Each one
+  # retains a full Pod template, so the value trades disk against how far back
+  # a rollback can reach. The default is 10.
+  revisionHistoryLimit: 5
+
+  # How long a rollout may make no progress before it is marked as failed.
+  progressDeadlineSeconds: 300
+
+  # ---------------------------------------------------------------------------
+  # The Pod template. Everything below this line is a Pod specification, and
+  # is identical in structure to Listing 4. Changing ANY field here produces a
+  # new template hash, therefore a new ReplicaSet, therefore a new rollout.
+  # ---------------------------------------------------------------------------
+  template:
+    metadata:
+      # Labels applied to every Pod the ReplicaSet creates. These must include
+      # everything in spec.selector.matchLabels above.
+      labels:
+        app: web
+        tier: frontend
+        dso202/practical: "01"
+        dso202/managed-by: declarative
+    spec:
+      containers:
+        - name: web
+          image: nginx:1.30-alpine
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+
+          resources:
+            # 3 replicas x 50m = 150m of the namespace's 2-core request quota.
+            # During a rolling update, maxSurge allows a fourth Pod, so the
+            # peak is 200m. Both figures were checked against Listing 3.
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi

@@ -1,0 +1,110 @@
+LAST SEEN   TYPE      REASON              OBJECT                                 MESSAGE
+18m         Normal    Scheduled           pod/web-pod                            Successfully assigned dso202-practical-01/web-pod to worker-node-1
+18m         Normal    Pulling             pod/web-pod                            Pulling image "nginx:1.30-alpine"
+11m         Normal    Created             pod/web-pod                            Container created
+11m         Normal    Pulled              pod/web-pod                            Successfully pulled image "nginx:1.30-alpine" in 6m13.061s (6m13.061s including waiting). Image size: 26064016 bytes.
+11m         Normal    Started             pod/web-pod                            Container started
+10m         Normal    Created             pod/web-deployment-76ddf5fcf9-rf95x    Container created
+10m         Normal    Started             pod/web-deployment-76ddf5fcf9-rf95x    Container started
+10m         Normal    SuccessfulCreate    replicaset/web-deployment-76ddf5fcf9   Created pod: web-deployment-76ddf5fcf9-rf95x
+10m         Normal    SuccessfulCreate    replicaset/web-deployment-76ddf5fcf9   Created pod: web-deployment-76ddf5fcf9-rtdbh
+10m         Normal    SuccessfulCreate    replicaset/web-deployment-76ddf5fcf9   Created pod: web-deployment-76ddf5fcf9-cfqdg
+10m         Normal    Scheduled           pod/web-deployment-76ddf5fcf9-rf95x    Successfully assigned dso202-practical-01/web-deployment-76ddf5fcf9-rf95x to worker-node-1
+10m         Normal    ScalingReplicaSet   deployment/web-deployment              Scaled up replica set web-deployment-76ddf5fcf9 from 0 to 3
+10m         Normal    Pulled              pod/web-deployment-76ddf5fcf9-rf95x    Container image "nginx:1.30-alpine" already present on machine and can be accessed by the pod
+10m         Normal    Scheduled           pod/web-deployment-76ddf5fcf9-rtdbh    Successfully assigned dso202-practical-01/web-deployment-76ddf5fcf9-rtdbh to worker-node-2
+10m         Normal    Pulling             pod/web-deployment-76ddf5fcf9-rtdbh    Pulling image "nginx:1.30-alpine"
+10m         Normal    Pulling             pod/web-deployment-76ddf5fcf9-cfqdg    Pulling image "nginx:1.30-alpine"
+10m         Normal    Scheduled           pod/web-deployment-76ddf5fcf9-cfqdg    Successfully assigned dso202-practical-01/web-deployment-76ddf5fcf9-cfqdg to worker-node-2
+9m56s       Normal    Pulled              pod/web-deployment-76ddf5fcf9-rtdbh    Successfully pulled image "nginx:1.30-alpine" in 53.059s (53.059s including waiting). Image size: 26064016 bytes.
+9m56s       Normal    Created             pod/web-deployment-76ddf5fcf9-rtdbh    Container created
+9m56s       Normal    Started             pod/web-deployment-76ddf5fcf9-rtdbh    Container started
+9m49s       Normal    Created             pod/web-deployment-76ddf5fcf9-cfqdg    Container created
+9m49s       Normal    Pulled              pod/web-deployment-76ddf5fcf9-cfqdg    Successfully pulled image "nginx:1.30-alpine" in 6.474s (59.418s including waiting). Image size: 26064016 bytes.
+9m49s       Normal    Started             pod/web-deployment-76ddf5fcf9-cfqdg    Container started
+9m21s       Normal    Killing             pod/web-deployment-76ddf5fcf9-cfqdg    Stopping container web
+9m21s       Normal    Scheduled           pod/web-deployment-76ddf5fcf9-xvwrr    Successfully assigned dso202-practical-01/web-deployment-76ddf5fcf9-xvwrr to worker-node-2
+9m21s       Normal    SuccessfulCreate    replicaset/web-deployment-76ddf5fcf9   Created pod: web-deployment-76ddf5fcf9-xvwrr
+9m20s       Normal    Pulled              pod/web-deployment-76ddf5fcf9-xvwrr    Container image "nginx:1.30-alpine" already present on machine and can be accessed by the pod
+9m20s       Normal    Created             pod/web-deployment-76ddf5fcf9-xvwrr    Container created
+9m20s       Normal    Started             pod/web-deployment-76ddf5fcf9-xvwrr    Container started
+9m1s        Normal    Created             pod/web-deployment-76ddf5fcf9-7ks7r    Container created
+9m1s        Normal    SuccessfulCreate    replicaset/web-deployment-76ddf5fcf9   Created pod: web-deployment-76ddf5fcf9-z5xm9
+9m1s        Normal    Created             pod/web-deployment-76ddf5fcf9-z5xm9    Container created
+9m1s        Normal    Pulled              pod/web-deployment-76ddf5fcf9-z5xm9    Container image "nginx:1.30-alpine" already present on machine and can be accessed by the pod
+9m1s        Normal    Scheduled           pod/web-deployment-76ddf5fcf9-z5xm9    Successfully assigned dso202-practical-01/web-deployment-76ddf5fcf9-z5xm9 to worker-node-1
+9m1s        Normal    ScalingReplicaSet   deployment/web-deployment              Scaled up replica set web-deployment-76ddf5fcf9 from 3 to 5
+9m1s        Normal    Scheduled           pod/web-deployment-76ddf5fcf9-7ks7r    Successfully assigned dso202-practical-01/web-deployment-76ddf5fcf9-7ks7r to worker-node-2
+9m1s        Normal    Pulled              pod/web-deployment-76ddf5fcf9-7ks7r    Container image "nginx:1.30-alpine" already present on machine and can be accessed by the pod
+9m1s        Normal    SuccessfulCreate    replicaset/web-deployment-76ddf5fcf9   Created pod: web-deployment-76ddf5fcf9-7ks7r
+9m          Normal    Started             pod/web-deployment-76ddf5fcf9-7ks7r    Container started
+9m          Normal    Started             pod/web-deployment-76ddf5fcf9-z5xm9    Container started
+8m58s       Normal    SuccessfulDelete    replicaset/web-deployment-76ddf5fcf9   Deleted pod: web-deployment-76ddf5fcf9-xvwrr
+8m58s       Normal    Killing             pod/web-deployment-76ddf5fcf9-7ks7r    Stopping container web
+8m58s       Normal    SuccessfulDelete    replicaset/web-deployment-76ddf5fcf9   Deleted pod: web-deployment-76ddf5fcf9-7ks7r
+8m58s       Normal    ScalingReplicaSet   deployment/web-deployment              Scaled down replica set web-deployment-76ddf5fcf9 from 5 to 3
+8m58s       Normal    Killing             pod/web-deployment-76ddf5fcf9-xvwrr    Stopping container web
+8m35s       Normal    SuccessfulCreate    replicaset/web-deployment-ddd46bfd     Created pod: web-deployment-ddd46bfd-wzqnf
+8m35s       Normal    ScalingReplicaSet   deployment/web-deployment              Scaled up replica set web-deployment-ddd46bfd from 0 to 1
+8m35s       Normal    Scheduled           pod/web-deployment-ddd46bfd-wzqnf      Successfully assigned dso202-practical-01/web-deployment-ddd46bfd-wzqnf to worker-node-2
+8m34s       Normal    Pulling             pod/web-deployment-ddd46bfd-wzqnf      Pulling image "nginx:1.31-alpine"
+7m29s       Normal    Started             pod/web-deployment-ddd46bfd-wzqnf      Container started
+7m29s       Normal    Created             pod/web-deployment-ddd46bfd-wzqnf      Container created
+7m29s       Normal    Pulled              pod/web-deployment-ddd46bfd-wzqnf      Successfully pulled image "nginx:1.31-alpine" in 1m4.382s (1m4.382s including waiting). Image size: 26279045 bytes.
+7m24s       Normal    Killing             pod/web-deployment-76ddf5fcf9-z5xm9    Stopping container web
+7m24s       Normal    Scheduled           pod/web-deployment-ddd46bfd-ns85g      Successfully assigned dso202-practical-01/web-deployment-ddd46bfd-ns85g to worker-node-1
+7m24s       Normal    Pulling             pod/web-deployment-ddd46bfd-ns85g      Pulling image "nginx:1.31-alpine"
+7m24s       Normal    SuccessfulDelete    replicaset/web-deployment-76ddf5fcf9   Deleted pod: web-deployment-76ddf5fcf9-z5xm9
+7m24s       Normal    SuccessfulCreate    replicaset/web-deployment-ddd46bfd     Created pod: web-deployment-ddd46bfd-ns85g
+7m24s       Normal    ScalingReplicaSet   deployment/web-deployment              Scaled down replica set web-deployment-76ddf5fcf9 from 3 to 2
+7m24s       Normal    ScalingReplicaSet   deployment/web-deployment              Scaled up replica set web-deployment-ddd46bfd from 1 to 2
+6m15s       Normal    Pulled              pod/web-deployment-ddd46bfd-ns85g      Successfully pulled image "nginx:1.31-alpine" in 1m7.192s (1m7.192s including waiting). Image size: 26279045 bytes.
+6m15s       Normal    Started             pod/web-deployment-ddd46bfd-ns85g      Container started
+6m15s       Normal    Created             pod/web-deployment-ddd46bfd-ns85g      Container created
+6m10s       Normal    Started             pod/web-deployment-ddd46bfd-v5zv4      Container started
+6m10s       Normal    Killing             pod/web-deployment-76ddf5fcf9-rtdbh    Stopping container web
+6m10s       Normal    SuccessfulCreate    replicaset/web-deployment-ddd46bfd     Created pod: web-deployment-ddd46bfd-v5zv4
+6m10s       Normal    SuccessfulDelete    replicaset/web-deployment-76ddf5fcf9   Deleted pod: web-deployment-76ddf5fcf9-rtdbh
+6m10s       Normal    Created             pod/web-deployment-ddd46bfd-v5zv4      Container created
+6m10s       Normal    Pulled              pod/web-deployment-ddd46bfd-v5zv4      Container image "nginx:1.31-alpine" already present on machine and can be accessed by the pod
+6m10s       Normal    Scheduled           pod/web-deployment-ddd46bfd-v5zv4      Successfully assigned dso202-practical-01/web-deployment-ddd46bfd-v5zv4 to worker-node-2
+6m10s       Normal    ScalingReplicaSet   deployment/web-deployment              Scaled down replica set web-deployment-76ddf5fcf9 from 2 to 1
+6m10s       Normal    ScalingReplicaSet   deployment/web-deployment              Scaled up replica set web-deployment-ddd46bfd from 2 to 3
+6m5s        Normal    Killing             pod/web-deployment-76ddf5fcf9-rf95x    Stopping container web
+6m5s        Normal    SuccessfulDelete    replicaset/web-deployment-76ddf5fcf9   Deleted pod: web-deployment-76ddf5fcf9-rf95x
+6m5s        Normal    ScalingReplicaSet   deployment/web-deployment              Scaled down replica set web-deployment-76ddf5fcf9 from 1 to 0
+5m46s       Normal    SuccessfulCreate    replicaset/web-deployment-76ddf5fcf9   Created pod: web-deployment-76ddf5fcf9-rbggj
+5m46s       Normal    Scheduled           pod/web-deployment-76ddf5fcf9-rbggj    Successfully assigned dso202-practical-01/web-deployment-76ddf5fcf9-rbggj to worker-node-2
+5m45s       Normal    Pulled              pod/web-deployment-76ddf5fcf9-rbggj    Container image "nginx:1.30-alpine" already present on machine and can be accessed by the pod
+5m45s       Normal    Created             pod/web-deployment-76ddf5fcf9-rbggj    Container created
+5m45s       Normal    Started             pod/web-deployment-76ddf5fcf9-rbggj    Container started
+5m40s       Normal    SuccessfulCreate    replicaset/web-deployment-76ddf5fcf9   Created pod: web-deployment-76ddf5fcf9-dw7d8
+5m40s       Normal    Pulled              pod/web-deployment-76ddf5fcf9-dw7d8    Container image "nginx:1.30-alpine" already present on machine and can be accessed by the pod
+5m40s       Normal    SuccessfulDelete    replicaset/web-deployment-ddd46bfd     Deleted pod: web-deployment-ddd46bfd-v5zv4
+5m40s       Normal    Killing             pod/web-deployment-ddd46bfd-v5zv4      Stopping container web
+5m40s       Normal    Scheduled           pod/web-deployment-76ddf5fcf9-dw7d8    Successfully assigned dso202-practical-01/web-deployment-76ddf5fcf9-dw7d8 to worker-node-1
+5m40s       Normal    Started             pod/web-deployment-76ddf5fcf9-dw7d8    Container started
+5m40s       Normal    Created             pod/web-deployment-76ddf5fcf9-dw7d8    Container created
+5m35s       Normal    Started             pod/web-deployment-76ddf5fcf9-l8vqn    Container started
+5m35s       Normal    SuccessfulCreate    replicaset/web-deployment-76ddf5fcf9   Created pod: web-deployment-76ddf5fcf9-l8vqn
+5m35s       Normal    Scheduled           pod/web-deployment-76ddf5fcf9-l8vqn    Successfully assigned dso202-practical-01/web-deployment-76ddf5fcf9-l8vqn to worker-node-2
+5m35s       Normal    Created             pod/web-deployment-76ddf5fcf9-l8vqn    Container created
+5m35s       Normal    Pulled              pod/web-deployment-76ddf5fcf9-l8vqn    Container image "nginx:1.30-alpine" already present on machine and can be accessed by the pod
+5m35s       Normal    Killing             pod/web-deployment-ddd46bfd-ns85g      Stopping container web
+5m35s       Normal    SuccessfulDelete    replicaset/web-deployment-ddd46bfd     Deleted pod: web-deployment-ddd46bfd-ns85g
+5m30s       Normal    Killing             pod/web-deployment-ddd46bfd-wzqnf      Stopping container web
+5m30s       Normal    SuccessfulDelete    replicaset/web-deployment-ddd46bfd     Deleted pod: web-deployment-ddd46bfd-wzqnf
+5m9s        Normal    SuccessfulCreate    replicaset/web-deployment-67499b7844   Created pod: web-deployment-67499b7844-b5z2g
+5m9s        Normal    Scheduled           pod/web-deployment-67499b7844-b5z2g    Successfully assigned dso202-practical-01/web-deployment-67499b7844-b5z2g to worker-node-2
+4m22s       Normal    Pulling             pod/web-deployment-67499b7844-b5z2g    Pulling image "nginx:9.99-does-not-exist"
+4m19s       Warning   Failed              pod/web-deployment-67499b7844-b5z2g    Error: ErrImagePull
+4m19s       Warning   Failed              pod/web-deployment-67499b7844-b5z2g    Failed to pull image "nginx:9.99-does-not-exist": rpc error: code = NotFound desc = failed to pull and unpack image "docker.io/library/nginx:9.99-does-not-exist": failed to resolve reference "docker.io/library/nginx:9.99-does-not-exist": docker.io/library/nginx:9.99-does-not-exist: not found
+4m7s        Warning   Failed              pod/web-deployment-67499b7844-b5z2g    Error: ImagePullBackOff
+4m7s        Normal    BackOff             pod/web-deployment-67499b7844-b5z2g    Back-off pulling image "nginx:9.99-does-not-exist"
+4m4s        Normal    SuccessfulDelete    replicaset/web-deployment-67499b7844   Deleted pod: web-deployment-67499b7844-b5z2g
+4m4s        Normal    ScalingReplicaSet   deployment/web-deployment              (combined from similar events): Scaled down replica set web-deployment-67499b7844 from 1 to 0
+3m34s       Normal    Scheduled           pod/client-pod                         Successfully assigned dso202-practical-01/client-pod to worker-node-2
+3m33s       Normal    Pulling             pod/client-pod                         Pulling image "busybox:1.37"
+3m19s       Normal    Started             pod/client-pod                         Container started
+3m19s       Normal    Created             pod/client-pod                         Container created
+3m19s       Normal    Pulled              pod/client-pod                         Successfully pulled image "busybox:1.37" in 13.884s (13.884s including waiting). Image size: 2222111 bytes.

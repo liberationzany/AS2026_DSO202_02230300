@@ -1,0 +1,12 @@
+Name:             dso202-quota
+Namespace:        dso202-practical-01
+Resource          Used   Hard
+--------          ----   ----
+count/configmaps  1      10
+count/secrets     0      10
+count/services    2      5
+limits.cpu        900m   4
+limits.memory     576Mi  4Gi
+pods              5      20
+requests.cpu      225m   2
+requests.memory   288Mi  2Gi

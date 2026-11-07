@@ -1,0 +1,6 @@
+deployment.apps/web-deployment 
+REVISION  CHANGE-CAUSE
+2         upgrade nginx from 1.30-alpine to 1.31-alpine
+4         <none>
+5         <none>
+

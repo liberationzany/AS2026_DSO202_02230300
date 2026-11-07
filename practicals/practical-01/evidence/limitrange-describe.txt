@@ -1,0 +1,6 @@
+Name:       dso202-limits
+Namespace:  dso202-practical-01
+Type        Resource  Min   Max    Default Request  Default Limit  Max Limit/Request Ratio
+----        --------  ---   ---    ---------------  -------------  -----------------------
+Container   memory    16Mi  512Mi  64Mi             128Mi          -
+Container   cpu       10m   1      50m              200m           -

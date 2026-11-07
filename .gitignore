@@ -1,0 +1,10 @@
+INSTRUCTIONS.md
+
+# Course handouts (not part of the submission)
+*.pdf
+
+# macOS archive junk
+__MACOSX/
+.DS_Store
+
+node_modules/

@@ -1,0 +1,48 @@
+# =============================================================================
+# File        : manifests/05-service-nodeport.yaml
+# Apply with  : kubectl apply -f manifests/05-service-nodeport.yaml
+# Verify with : curl -s http://localhost:30080
+#               docker exec dso202-worker curl -s http://localhost:30080
+#
+# DEPENDS ON LISTING 1: nodePort below must equal the 'containerPort' in the
+# control-plane node's extraPortMappings. Change one and the other must change.
+#
+# REQUEST PATH:
+#   host :30080
+#     -> control-plane container :30080   (published by Listing 1)
+#       -> kube-proxy on that node        (rewrites to a Pod address)
+#         -> a ready Pod on a worker node, port 80
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-nodeport
+  namespace: dso202-practical-01
+  labels:
+    app: web
+    tier: frontend
+    dso202/practical: "01"
+    dso202/managed-by: declarative
+spec:
+  # NodePort does everything ClusterIP does - it still allocates a cluster IP
+  # and a DNS name - and additionally opens 'nodePort' on EVERY node.
+  type: NodePort
+
+  selector:
+    app: web
+    tier: frontend
+
+  ports:
+    - name: http
+      port: 80              # port on the Service, for in-cluster clients
+      targetPort: http       # named container port on the Pod
+
+      # The port opened on every node. Valid range is 30000 to 32767; the API
+      # server rejects anything outside it.
+      #
+      # Omitting this field is usually better practice, because the cluster
+      # then allocates a free port automatically. It is fixed here only
+      # because Listing 1 had to publish a specific host port in advance, and
+      # the two must agree.
+      nodePort: 30080
+      protocol: TCP
