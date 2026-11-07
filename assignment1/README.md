@@ -181,3 +181,17 @@ kubectl delete -f manifests/09-service-frontend.yaml -f manifests/08-deployment-
 
 docker rm -f dso202-frontend-proxy dso202-backend-proxy
 ```
+
+## Assessment mapping (module descriptor)
+
+Assessed under *B. Assignments* of the DSO202 module descriptor
+(`Module_Descriptor_Resequenced.docx`), out of 10 marks. The descriptor maps
+Assignment 1 to Units I & II (core objects, RBAC).
+
+| Criterion (descriptor) | Marks | Where it is evidenced |
+|---|---|---|
+| Code Organization & Readability | 1 | `manifests/` numbered in apply order (`00-namespace` → `09-service-frontend`), one object type per file; application source kept separate in `Assignment-1-app-code/` |
+| Code Comments & Documentation | 1 | Header and per-field comments in every manifest; this README (purpose, versions, known issues, rebuild and cleanup commands) |
+| Configuration Requirements | 2 | ConfigMap for non-secret settings, Secret for DB credentials, PVC for Postgres data, a Service per tier — matching the contract in the Image Build Guide (§4.3), with the one deviation (`backend-svc` as NodePort) documented above |
+| Configuration Implementation | 5 | Three Deployments wired through ConfigMap/Secret env vars, resource requests/limits, non-root containers, DB retry on startup — see the verification checklist above |
+| Deployment & Configuration | 1 | Reproducible rebuild sequence (build → `kind load` → ordered `kubectl apply` → `rollout status`) and verified end-to-end CRUD plus PVC persistence across Pod recreation |

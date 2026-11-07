@@ -256,3 +256,25 @@ guide.
 - Kubernetes documentation, ResourceQuota and LimitRange concepts — https://kubernetes.io/docs/concepts/policy/resource-quotas/ — accessed 2026-09-01
 - `DSO202_Practical1_Guide.md` (course-provided, rendered as `practical1.pdf`) — accessed 2026-09-01
 - `DSO202_Practical1_Manifests.md` (course-provided, rendered as `manifest.pdf`) — accessed 2026-09-01
+
+## 7. Assessment Mapping (Module Descriptor)
+
+Assessed under *A. Practical Work & Report* of the DSO202 module descriptor
+(`Module_Descriptor_Resequenced.docx`): practical report out of 5, practical
+work out of 15.
+
+### Practical Report (5 marks)
+
+| Criterion (descriptor) | Marks | Where it is evidenced |
+|---|---|---|
+| Documentation | 2 | §1 Objective, §2 Environment (tool versions), §3 Procedure and Observations (one subsection per stage, each with command output), §6 References with access dates |
+| Reflection | 2 | §5 Reflection — a named problem (slow image pull), the diagnostic commands used (`kubectl describe pod`, `crictl pull`), what would be done differently, and one open question |
+| Clarity & Coherence | 1 | §4 Analysis (review-question answers); consistent stage numbering between README, manifests and report |
+
+### Practical Work (15 marks)
+
+| Criterion (descriptor) | Marks | Where it is evidenced |
+|---|---|---|
+| Code Organisation & Readability | 3 | `cluster/` and `manifests/` split, numbered in apply order (`00-` … `06-`); README repository tree |
+| Code Comments | 2 | Every manifest in `manifests/` and `cluster/` carries a header block and per-field comments |
+| Functional/Configuration Requirements | 10 | Three-node kind cluster; Namespace + ResourceQuota + LimitRange; Pod, Deployment with rolling update, ClusterIP and NodePort Services — proven by `evidence/*.txt` (nodes, final state, events, quota/limit describe, rollout history) |
