@@ -1,0 +1,44 @@
+# =============================================================================
+# File      : examples/webapp/overlays/qa/kustomization.yaml
+# Practical : DSO202 Practical 5 - Kustomize (Task 9)
+# Purpose   : QA environment built from the same base, without copying
+#             deployment.yaml or service.yaml.
+# Requires  : namespace webapp-qa, 2 replicas, environment label qa, own page,
+#             Deployment annotation training.example.com/owner: qa-team via a
+#             JSON 6902 patch.
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+  - namespace.yaml
+
+namespace: webapp-qa
+
+labels:
+  - pairs:
+      app.kubernetes.io/environment: qa
+    includeSelectors: false
+    includeTemplates: true
+
+replicas:
+  - name: webapp
+    count: 2
+
+configMapGenerator:
+  - name: web-content
+    behavior: replace
+    files:
+      - index.html
+
+# JSON 6902 patches need an explicit target, because the patch file contains
+# only operations and paths - nothing in it says which object it applies to.
+# The target is narrow (group/version/kind/name) so no other resource can match.
+patches:
+  - path: patch-annotation.yaml
+    target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: webapp

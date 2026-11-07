@@ -1,0 +1,27 @@
+$ kubectl config current-context
+kind-dso202
+
+$ kubectl cluster-info | head -2
+Kubernetes control plane is running at https://127.0.0.1:64029
+CoreDNS is running at https://127.0.0.1:64029/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
+
+$ kubectl get nodes -o wide
+NAME            STATUS   ROLES           AGE   VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE                       KERNEL-VERSION                             CONTAINER-RUNTIME
+control-plane   Ready    control-plane   88d   v1.36.1   172.20.0.2    <none>        Debian GNU/Linux 13 (trixie)   6.6.87.2-microsoft-standard-WSL2 (amd64)   containerd://2.3.1
+worker-node-1   Ready    <none>          88d   v1.36.1   172.20.0.3    <none>        Debian GNU/Linux 13 (trixie)   6.6.87.2-microsoft-standard-WSL2 (amd64)   containerd://2.3.1
+worker-node-2   Ready    <none>          88d   v1.36.1   172.20.0.4    <none>        Debian GNU/Linux 13 (trixie)   6.6.87.2-microsoft-standard-WSL2 (amd64)   containerd://2.3.1
+
+$ kubectl version --client -o yaml
+clientVersion:
+  buildDate: "2026-07-22T18:10:35Z"
+  compiler: gc
+  gitCommit: 0f29094e5b73085e3802ecc1298ecae13866bfe6
+  gitTreeState: clean
+  gitVersion: v1.36.3
+  goVersion: go1.26.5
+  major: "1"
+  minor: "36"
+  platform: windows/amd64
+kustomizeVersion: v5.8.1
+
+

@@ -1,0 +1,25 @@
+# =============================================================================
+# File      : examples/webapp/overlays/prod/patch-resources.yaml
+# Practical : DSO202 Practical 5 - Kustomize
+# Purpose   : STRATEGIC-MERGE patch. It looks like a fragment of the base
+#             Deployment: Kustomize finds Deployment 'webapp', finds the
+#             container named 'webapp' in the list (lists of containers are
+#             merged by their 'name' key), and merges these fields over the
+#             base values. Fields not mentioned here are kept from the base.
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webapp
+spec:
+  template:
+    spec:
+      containers:
+        - name: webapp           # merge key: selects the container to change
+          resources:
+            requests:
+              cpu: 100m          # base: 50m
+              memory: 64Mi       # base: 32Mi
+            limits:
+              cpu: 250m          # base: 100m
+              memory: 128Mi      # base: 64Mi

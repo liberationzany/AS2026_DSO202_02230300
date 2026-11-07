@@ -1,0 +1,25 @@
+# =============================================================================
+# File      : examples/webapp/base/kustomization.yaml
+# Practical : DSO202 Practical 5 - Kustomize
+# Purpose   : Build instructions for the base. This file is never sent to the
+#             API server; it tells Kustomize which resources to compose.
+# Render    : kubectl kustomize examples/webapp/base
+#
+# The base has no namespace on purpose: it is not applied directly. Each
+# overlay chooses the namespace.
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Compose: the shared resources.
+resources:
+  - deployment.yaml
+  - service.yaml
+
+# Generate: a ConfigMap from index.html. Its rendered name carries a hash of
+# the content (web-content-<hash>), and every reference to 'web-content' in
+# the resources above is rewritten to that name.
+configMapGenerator:
+  - name: web-content
+    files:
+      - index.html

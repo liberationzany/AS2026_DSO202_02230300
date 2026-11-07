@@ -1,0 +1,220 @@
+$ echo '--- first attempt: a single add operation (copy of the overlay in a scratch dir) ---'; cat C:/Users/zeroe/AppData/Local/Temp/claude/b3724c51438ec787/a2032ed2-2eb7-47d9-9825-3f9216c9c1fd/scratchpad/qa-try/examples/webapp/overlays/qa/patch-annotation.yaml
+--- first attempt: a single add operation (copy of the overlay in a scratch dir) ---
+- op: add
+  path: /metadata/annotations/training.example.com~1owner
+  value: qa-team
+
+$ kubectl kustomize C:/Users/zeroe/AppData/Local/Temp/claude/b3724c51438ec787/a2032ed2-2eb7-47d9-9825-3f9216c9c1fd/scratchpad/qa-try/examples/webapp/overlays/qa 2>&1 | tail -n 3 | sed 's#C:/Users/zeroe/AppData/Local/Temp/[^ ]*qa-try/#<scratch>/#g'
+      - configMap:
+          name: web-content-h29tbth6hm
+        name: web-content
+
+$ echo '--- final patch: create the annotations map first, then add the key ---'
+--- final patch: create the annotations map first, then add the key ---
+
+$ grep -v '^#' examples/webapp/overlays/qa/patch-annotation.yaml
+- op: add
+  path: /metadata/annotations
+  value: {}
+- op: add
+  path: /metadata/annotations/training.example.com~1owner
+  value: qa-team
+
+$ kubectl kustomize examples/webapp/overlays/qa | grep -B3 -A10 '^kind: Deployment'
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    training.example.com/owner: qa-team
+  labels:
+    app.kubernetes.io/environment: qa
+    app.kubernetes.io/name: webapp
+  name: webapp
+  namespace: webapp-qa
+spec:
+  replicas: 2
+
+$ echo '--- the single-add render above DID succeed; does it contain the annotation? ---'; kubectl kustomize $T/examples/webapp/overlays/qa | grep -A3 '^kind: Deployment'
+--- the single-add render above DID succeed; does it contain the annotation? ---
+kind: Deployment
+metadata:
+  annotations:
+    training.example.com/owner: qa-team
+
+$ echo '--- test: the two-op patch against a Deployment that ALREADY has an annotation (existing.example.com/keep) ---'; grep -A2 '^  annotations' $T/annot/deploy.yaml
+--- test: the two-op patch against a Deployment that ALREADY has an annotation (existing.example.com/keep) ---
+  annotations:
+    existing.example.com/keep: "yes"
+  labels:
+
+$ kubectl kustomize $T/annot | sed -n '/^metadata:/,/^  name:/p'
+metadata:
+  annotations:
+    training.example.com/owner: qa-team
+  labels:
+    app.kubernetes.io/name: webapp
+  name: webapp
+
+$ echo 'RESULT: existing.example.com/keep was WIPED by "op: add, path: /metadata/annotations, value: {}". The two-op patch is removed; the single add is used.'
+RESULT: existing.example.com/keep was WIPED by "op: add, path: /metadata/annotations, value: {}". The two-op patch is removed; the single add is used.
+
+$ echo '--- final QA overlay files ---'; for f in examples/webapp/overlays/qa/*; do echo "=== $f"; cat $f; echo; done
+--- final QA overlay files ---
+=== examples/webapp/overlays/qa/index.html
+<!DOCTYPE html>
+<html>
+<body>
+<h1>QA</h1>
+<p>Environment: qa. Owned by qa-team, two replicas, built from the shared base.</p>
+</body>
+</html>
+
+=== examples/webapp/overlays/qa/kustomization.yaml
+# =============================================================================
+# File      : examples/webapp/overlays/qa/kustomization.yaml
+# Practical : DSO202 Practical 5 - Kustomize (Task 9)
+# Purpose   : QA environment built from the same base, without copying
+#             deployment.yaml or service.yaml.
+# Requires  : namespace webapp-qa, 2 replicas, environment label qa, own page,
+#             Deployment annotation training.example.com/owner: qa-team via a
+#             JSON 6902 patch.
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+  - namespace.yaml
+
+namespace: webapp-qa
+
+labels:
+  - pairs:
+      app.kubernetes.io/environment: qa
+    includeSelectors: false
+    includeTemplates: true
+
+replicas:
+  - name: webapp
+    count: 2
+
+configMapGenerator:
+  - name: web-content
+    behavior: replace
+    files:
+      - index.html
+
+# JSON 6902 patches need an explicit target, because the patch file contains
+# only operations and paths - nothing in it says which object it applies to.
+# The target is narrow (group/version/kind/name) so no other resource can match.
+patches:
+  - path: patch-annotation.yaml
+    target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: webapp
+
+=== examples/webapp/overlays/qa/namespace.yaml
+# =============================================================================
+# File      : examples/webapp/overlays/qa/namespace.yaml
+# Purpose   : Namespace for the QA environment (Task 9).
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: webapp-qa
+  labels:
+    app.kubernetes.io/environment: qa
+
+=== examples/webapp/overlays/qa/patch-annotation.yaml
+# =============================================================================
+# File      : examples/webapp/overlays/qa/patch-annotation.yaml
+# Practical : DSO202 Practical 5 - Kustomize (Task 9)
+# Purpose   : JSON 6902 patch - an explicit operation at an exact path, not a
+#             Kubernetes-shaped fragment. Targeted in kustomization.yaml at
+#             apps/v1 Deployment 'webapp' only.
+#
+# Path escaping: the annotation key 'training.example.com/owner' contains a
+# '/', which JSON Pointer uses as a path separator, so it is written as '~1'.
+#
+# One operation is enough: Kustomize creates the missing 'annotations' map
+# (verified by rendering). Do NOT add a preceding
+#   - op: add
+#     path: /metadata/annotations
+#     value: {}
+# "to be safe": rendering showed it REPLACES the whole map and silently wipes
+# any annotation already on the Deployment (see evidence/task9-qa-overlay.txt).
+# =============================================================================
+- op: add
+  path: /metadata/annotations/training.example.com~1owner
+  value: qa-team
+
+
+$ kubectl kustomize examples/webapp/overlays/qa | grep -A12 '^kind: Deployment'
+kind: Deployment
+metadata:
+  annotations:
+    training.example.com/owner: qa-team
+  labels:
+    app.kubernetes.io/environment: qa
+    app.kubernetes.io/name: webapp
+  name: webapp
+  namespace: webapp-qa
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+
+$ kubectl kustomize examples/webapp/overlays/qa | grep -c 'training.example.com/owner: qa-team'
+1
+
+$ kubectl diff -k examples/webapp/overlays/qa 2>&1 | head -n 3; true
+Error from server (NotFound): namespaces "webapp-qa" not found
+
+$ kubectl apply -k examples/webapp/overlays/qa
+namespace/webapp-qa created
+configmap/web-content-h29tbth6hm created
+service/webapp created
+deployment.apps/webapp created
+
+$ kubectl rollout status deployment/webapp -n webapp-qa --timeout=180s
+Waiting for deployment "webapp" rollout to finish: 0 of 2 updated replicas are available...
+Waiting for deployment "webapp" rollout to finish: 1 of 2 updated replicas are available...
+deployment "webapp" successfully rolled out
+
+$ kubectl get deployment webapp -n webapp-qa -o yaml | sed -n '1,/^spec:/p'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{"training.example.com/owner":"qa-team"},"labels":{"app.kubernetes.io/environment":"qa","app.kubernetes.io/name":"webapp"},"name":"webapp","namespace":"webapp-qa"},"spec":{"replicas":2,"selector":{"matchLabels":{"app.kubernetes.io/name":"webapp"}},"template":{"metadata":{"labels":{"app.kubernetes.io/environment":"qa","app.kubernetes.io/name":"webapp"}},"spec":{"containers":[{"image":"nginx:1.30-alpine","name":"webapp","ports":[{"containerPort":80,"name":"http"}],"readinessProbe":{"httpGet":{"path":"/","port":"http"},"periodSeconds":5},"resources":{"limits":{"cpu":"100m","memory":"64Mi"},"requests":{"cpu":"50m","memory":"32Mi"}},"volumeMounts":[{"mountPath":"/usr/share/nginx/html","name":"web-content","readOnly":true}]}],"volumes":[{"configMap":{"name":"web-content-h29tbth6hm"},"name":"web-content"}]}}}}
+    training.example.com/owner: qa-team
+  creationTimestamp: "2026-11-07T15:49:14Z"
+  generation: 1
+  labels:
+    app.kubernetes.io/environment: qa
+    app.kubernetes.io/name: webapp
+  name: webapp
+  namespace: webapp-qa
+  resourceVersion: "222705"
+  uid: 224e2d68-680b-4d03-a9f6-30dbda052973
+spec:
+
+$ kubectl get deployment webapp -n webapp-qa -o jsonpath='replicas={.spec.replicas} image={.spec.template.spec.containers[0].image} owner={.metadata.annotations.training\.example\.com/owner}{"\n"}'
+replicas=2 image=nginx:1.30-alpine owner=qa-team
+
+$ kubectl run curl-qa --rm -i --restart=Never --image=busybox:1.37 -n webapp-qa -- wget -qO- http://webapp 2>/dev/null | grep '<h1>' | head -1
+<h1>QA</h1>
+
+$ kubectl get deploy -A -l app.kubernetes.io/name=webapp -L app.kubernetes.io/environment
+NAMESPACE        NAME     READY   UP-TO-DATE   AVAILABLE   AGE     ENVIRONMENT
+webapp-dev       webapp   1/1     1            1           2m54s   dev
+webapp-prod      webapp   4/4     4            4           94s     prod
+webapp-qa        webapp   2/2     2            2           7s      qa
+webapp-staging   webapp   2/2     2            2           104s    staging
+

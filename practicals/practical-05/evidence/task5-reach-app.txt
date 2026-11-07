@@ -1,0 +1,16 @@
+$ echo '(port 8085 used instead of 8080: 8080 is the Argo CD UI port from Practical 4)'
+(port 8085 used instead of 8080: 8080 is the Argo CD UI port from Practical 4)
+
+# In a second terminal (left running during the test):
+#   kubectl port-forward -n webapp-dev service/webapp 8085:80
+#   Forwarding from 127.0.0.1:8085 -> 80
+
+$ curl -s http://127.0.0.1:8085
+<!DOCTYPE html>
+<html>
+<body>
+<h1>DEV v1</h1>
+<p>Environment: dev. Experimental build, one replica.</p>
+</body>
+</html>
+

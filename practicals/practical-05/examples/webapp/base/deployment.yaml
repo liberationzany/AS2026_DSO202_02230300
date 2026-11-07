@@ -1,0 +1,60 @@
+# =============================================================================
+# File      : examples/webapp/base/deployment.yaml
+# Practical : DSO202 Practical 5 - Kustomize
+# Purpose   : The ONE Deployment shared by every environment. Overlays never
+#             copy this file; they change it with transformers (namespace,
+#             labels, replicas, images) and patches.
+# Render    : kubectl kustomize examples/webapp/base
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webapp
+  labels:
+    app.kubernetes.io/name: webapp
+spec:
+  # Default only. Every overlay sets its own count with the 'replicas:'
+  # transformer, so this number never reaches a cluster unchanged.
+  replicas: 1
+  selector:
+    # Selectors are immutable on an existing Deployment. Overlays add their
+    # environment label with includeSelectors: false so this never changes.
+    matchLabels:
+      app.kubernetes.io/name: webapp
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: webapp
+    spec:
+      containers:
+        - name: webapp
+          # The 'images:' transformer in each overlay rewrites this tag.
+          image: nginx:1.30-alpine
+          ports:
+            - name: http
+              containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 5
+          # Base values. prod/patch-resources.yaml raises them with a
+          # strategic-merge patch; the other environments keep these.
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          volumeMounts:
+            - name: web-content
+              mountPath: /usr/share/nginx/html
+              readOnly: true
+      volumes:
+        # 'web-content' is the LOGICAL name of the generated ConfigMap.
+        # Kustomize rewrites it to the hashed name (web-content-<hash>) at
+        # render time, so this file never contains a hash.
+        - name: web-content
+          configMap:
+            name: web-content

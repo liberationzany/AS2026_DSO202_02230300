@@ -1,0 +1,21 @@
+# =============================================================================
+# File      : examples/webapp/overlays/qa/patch-annotation.yaml
+# Practical : DSO202 Practical 5 - Kustomize (Task 9)
+# Purpose   : JSON 6902 patch - an explicit operation at an exact path, not a
+#             Kubernetes-shaped fragment. Targeted in kustomization.yaml at
+#             apps/v1 Deployment 'webapp' only.
+#
+# Path escaping: the annotation key 'training.example.com/owner' contains a
+# '/', which JSON Pointer uses as a path separator, so it is written as '~1'.
+#
+# One operation is enough: Kustomize creates the missing 'annotations' map
+# (verified by rendering). Do NOT add a preceding
+#   - op: add
+#     path: /metadata/annotations
+#     value: {}
+# "to be safe": rendering showed it REPLACES the whole map and silently wipes
+# any annotation already on the Deployment (see evidence/task9-qa-overlay.txt).
+# =============================================================================
+- op: add
+  path: /metadata/annotations/training.example.com~1owner
+  value: qa-team

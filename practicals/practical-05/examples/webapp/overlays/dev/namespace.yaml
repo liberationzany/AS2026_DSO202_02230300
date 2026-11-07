@@ -1,0 +1,12 @@
+# =============================================================================
+# File      : examples/webapp/overlays/dev/namespace.yaml
+# Purpose   : The namespace this environment lives in. Listed as a resource
+#             in the overlay so 'kubectl apply -k' creates it before the
+#             objects that go into it, and 'kubectl delete -k' removes it.
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: webapp-dev
+  labels:
+    app.kubernetes.io/environment: dev

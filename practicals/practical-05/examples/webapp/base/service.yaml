@@ -1,0 +1,23 @@
+# =============================================================================
+# File      : examples/webapp/base/service.yaml
+# Practical : DSO202 Practical 5 - Kustomize
+# Purpose   : Shared ClusterIP Service. Each overlay places it in its own
+#             namespace; the name 'webapp' is the same in every environment.
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: webapp
+  labels:
+    app.kubernetes.io/name: webapp
+spec:
+  type: ClusterIP
+  # Matches the Deployment's selector label only. The environment label added
+  # by overlays is deliberately NOT part of this selector (includeSelectors:
+  # false), so traffic routing is identical in every environment.
+  selector:
+    app.kubernetes.io/name: webapp
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

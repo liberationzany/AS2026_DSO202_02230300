@@ -1,0 +1,99 @@
+$ echo '--- BEFORE the content change ---'
+--- BEFORE the content change ---
+
+$ kubectl get configmap -n webapp-dev
+NAME                     DATA   AGE
+kube-root-ca.crt         1      49s
+web-content-2gd6cctf49   1      49s
+
+$ kubectl get pods -n webapp-dev -o wide
+NAME                      READY   STATUS    RESTARTS   AGE   IP            NODE            NOMINATED NODE   READINESS GATES
+webapp-59d7d8df84-mgq2x   1/1     Running   0          50s   10.244.1.15   worker-node-2   <none>           <none>
+
+$ kubectl get deploy webapp -n webapp-dev -o jsonpath='volume configMap ref: {.spec.template.spec.volumes[0].configMap.name}{"\n"}generation: {.metadata.generation}{"\n"}'
+volume configMap ref: web-content-2gd6cctf49
+generation: 1
+
+$ kubectl get rs -n webapp-dev
+NAME                DESIRED   CURRENT   READY   AGE
+webapp-59d7d8df84   1         1         1       50s
+
+$ echo '--- examples/webapp/overlays/dev/index.html edited: <h1>DEV v1</h1> -> <h1>DEV v2 -- configuration changed</h1> ---'
+--- examples/webapp/overlays/dev/index.html edited: <h1>DEV v1</h1> -> <h1>DEV v2 -- configuration changed</h1> ---
+
+$ kubectl kustomize examples/webapp/overlays/dev | grep 'name: web-content'
+  name: web-content-8hc9b5tgbm
+          name: web-content
+          name: web-content-8hc9b5tgbm
+        name: web-content
+
+$ kubectl diff -k examples/webapp/overlays/dev | grep '^[-+] ' ; true
+-  generation: 1
++  generation: 2
+-          name: web-content-2gd6cctf49
++          name: web-content-8hc9b5tgbm
++  index.html: |
++    <!DOCTYPE html>
++    <html>
++    <body>
++    <h1>DEV v2 -- configuration changed</h1>
++    <p>Environment: dev. Experimental build, one replica.</p>
++    </body>
++    </html>
++  creationTimestamp: "2026-11-07T15:47:25Z"
++  labels:
++    app.kubernetes.io/environment: dev
++  name: web-content-8hc9b5tgbm
++  namespace: webapp-dev
++  uid: 0ca339e1-2f7f-435a-8ca8-9ca3f0199036
+
+$ kubectl apply -k examples/webapp/overlays/dev
+namespace/webapp-dev unchanged
+configmap/web-content-8hc9b5tgbm created
+service/webapp unchanged
+deployment.apps/webapp configured
+
+$ kubectl rollout status deployment/webapp -n webapp-dev --timeout=180s
+Waiting for deployment "webapp" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "webapp" rollout to finish: 1 old replicas are pending termination...
+deployment "webapp" successfully rolled out
+
+$ echo '--- AFTER the content change ---'
+--- AFTER the content change ---
+
+$ kubectl get configmap -n webapp-dev
+NAME                     DATA   AGE
+kube-root-ca.crt         1      60s
+web-content-2gd6cctf49   1      60s
+web-content-8hc9b5tgbm   1      2s
+
+$ kubectl get pods -n webapp-dev -o wide
+NAME                      READY   STATUS        RESTARTS   AGE   IP            NODE            NOMINATED NODE   READINESS GATES
+webapp-59d7d8df84-mgq2x   1/1     Terminating   0          60s   10.244.1.15   worker-node-2   <none>           <none>
+webapp-797d89cc59-p62xg   1/1     Running       0          2s    10.244.1.16   worker-node-2   <none>           <none>
+
+$ kubectl get deploy webapp -n webapp-dev -o jsonpath='volume configMap ref: {.spec.template.spec.volumes[0].configMap.name}{"\n"}generation: {.metadata.generation}{"\n"}'
+volume configMap ref: web-content-8hc9b5tgbm
+generation: 2
+
+$ kubectl get rs -n webapp-dev
+NAME                DESIRED   CURRENT   READY   AGE
+webapp-59d7d8df84   0         0         0       61s
+webapp-797d89cc59   1         1         1       3s
+
+$ kubectl rollout history deployment/webapp -n webapp-dev
+deployment.apps/webapp 
+REVISION  CHANGE-CAUSE
+1         <none>
+2         <none>
+
+
+$ kubectl exec -n webapp-dev deploy/webapp -- cat /usr/share/nginx/html/index.html
+<!DOCTYPE html>
+<html>
+<body>
+<h1>DEV v2 -- configuration changed</h1>
+<p>Environment: dev. Experimental build, one replica.</p>
+</body>
+</html>
+

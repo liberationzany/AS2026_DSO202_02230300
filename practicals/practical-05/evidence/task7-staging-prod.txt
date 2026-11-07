@@ -1,0 +1,59 @@
+$ kubectl diff -k examples/webapp/overlays/staging 2>&1 | head -n 3; true
+Error from server (NotFound): namespaces "webapp-staging" not found
+
+$ kubectl apply -k examples/webapp/overlays/staging
+namespace/webapp-staging created
+configmap/web-content-k4c25662dk created
+service/webapp created
+deployment.apps/webapp created
+
+$ kubectl rollout status deployment/webapp -n webapp-staging --timeout=240s
+Waiting for deployment "webapp" rollout to finish: 0 of 2 updated replicas are available...
+Waiting for deployment "webapp" rollout to finish: 1 of 2 updated replicas are available...
+deployment "webapp" successfully rolled out
+
+$ kubectl diff -k examples/webapp/overlays/prod 2>&1 | head -n 3; true
+Error from server (NotFound): namespaces "webapp-prod" not found
+
+$ kubectl apply -k examples/webapp/overlays/prod
+namespace/webapp-prod created
+configmap/web-content-9dkcdmkmf8 created
+service/webapp created
+deployment.apps/webapp created
+
+$ kubectl rollout status deployment/webapp -n webapp-prod --timeout=240s
+Waiting for deployment "webapp" rollout to finish: 0 of 4 updated replicas are available...
+Waiting for deployment "webapp" rollout to finish: 1 of 4 updated replicas are available...
+Waiting for deployment "webapp" rollout to finish: 2 of 4 updated replicas are available...
+Waiting for deployment "webapp" rollout to finish: 3 of 4 updated replicas are available...
+deployment "webapp" successfully rolled out
+
+$ kubectl get deploy -A -l app.kubernetes.io/name=webapp -o custom-columns=NAMESPACE:.metadata.namespace,NAME:.metadata.name,READY:.status.readyReplicas,DESIRED:.spec.replicas,IMAGE:.spec.template.spec.containers[0].image,ENV:.metadata.labels.app\.kubernetes\.io/environment
+NAMESPACE        NAME     READY   DESIRED   IMAGE               ENV
+webapp-dev       webapp   1       1         nginx:1.31-alpine   <none>
+webapp-prod      webapp   4       4         nginx:1.30-alpine   <none>
+webapp-staging   webapp   2       2         nginx:1.31-alpine   <none>
+
+$ kubectl get pods -A -l app.kubernetes.io/name=webapp -o wide
+NAMESPACE        NAME                      READY   STATUS    RESTARTS   AGE   IP            NODE            NOMINATED NODE   READINESS GATES
+webapp-dev       webapp-797d89cc59-p62xg   1/1     Running   0          23s   10.244.1.16   worker-node-2   <none>           <none>
+webapp-prod      webapp-5754b77fbf-6c9rt   1/1     Running   0          1s    10.244.1.18   worker-node-2   <none>           <none>
+webapp-prod      webapp-5754b77fbf-6kvhq   1/1     Running   0          1s    10.244.2.14   worker-node-1   <none>           <none>
+webapp-prod      webapp-5754b77fbf-g6dkh   1/1     Running   0          1s    10.244.2.13   worker-node-1   <none>           <none>
+webapp-prod      webapp-5754b77fbf-h6nnv   1/1     Running   0          1s    10.244.1.19   worker-node-2   <none>           <none>
+webapp-staging   webapp-6b545df85b-flj9n   1/1     Running   0          11s   10.244.2.12   worker-node-1   <none>           <none>
+webapp-staging   webapp-6b545df85b-s6c8z   1/1     Running   0          11s   10.244.1.17   worker-node-2   <none>           <none>
+
+$ kubectl get deploy -A -l app.kubernetes.io/name=webapp -L app.kubernetes.io/environment
+NAMESPACE        NAME     READY   UP-TO-DATE   AVAILABLE   AGE   ENVIRONMENT
+webapp-dev       webapp   1/1     1            1           89s   dev
+webapp-prod      webapp   4/4     4            4           9s    prod
+webapp-staging   webapp   2/2     2            2           19s   staging
+
+$ for e in dev staging prod; do echo "$e: $(kubectl run curl-$e --rm -i --restart=Never --image=busybox:1.37 -n webapp-$e -- wget -qO- http://webapp 2>/dev/null | grep '<h1>')"; done
+dev: <h1>DEV v2 -- configuration changed</h1>
+staging: <h1>STAGING</h1>
+<h1>STAGING</h1>
+prod: <h1>PRODUCTION</h1>
+<h1>PRODUCTION</h1>
+

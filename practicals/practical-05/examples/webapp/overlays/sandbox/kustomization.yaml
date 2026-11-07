@@ -1,0 +1,25 @@
+# =============================================================================
+# File      : examples/webapp/overlays/sandbox/kustomization.yaml
+# Practical : DSO202 Practical 5 - Kustomize (Challenge extension)
+# Purpose   : Show REFERENCE-AWARE name transformation. namePrefix renames
+#             objects, and Kustomize must also rewrite every field that refers
+#             to a renamed object, or the render would be internally broken.
+# Render    : kubectl kustomize examples/webapp/overlays/sandbox
+#             (rendered and compared only; not applied)
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+namespace: webapp-sandbox
+
+# The only change: prefix every object name with 'sandbox-'.
+namePrefix: sandbox-
+
+labels:
+  - pairs:
+      app.kubernetes.io/environment: sandbox
+    includeSelectors: false
+    includeTemplates: true

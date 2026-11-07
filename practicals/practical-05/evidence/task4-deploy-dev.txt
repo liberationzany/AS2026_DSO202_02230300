@@ -1,0 +1,35 @@
+$ kubectl diff -k examples/webapp/overlays/dev | grep '^[+-]' | grep -v '^+++\|^---' | grep -c '^+' ; true
+Error from server (NotFound): namespaces "webapp-dev" not found
+0
+
+$ kubectl diff -k examples/webapp/overlays/dev | head -n 30; true
+Error from server (NotFound): namespaces "webapp-dev" not found
+
+$ kubectl apply -k examples/webapp/overlays/dev
+namespace/webapp-dev created
+configmap/web-content-2gd6cctf49 created
+service/webapp created
+deployment.apps/webapp created
+
+$ kubectl rollout status deployment/webapp -n webapp-dev --timeout=180s
+Waiting for deployment "webapp" rollout to finish: 0 of 1 updated replicas are available...
+deployment "webapp" successfully rolled out
+
+$ kubectl get all -n webapp-dev
+NAME                          READY   STATUS    RESTARTS   AGE
+pod/webapp-59d7d8df84-mgq2x   1/1     Running   0          7s
+
+NAME             TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE
+service/webapp   ClusterIP   10.96.113.249   <none>        80/TCP    7s
+
+NAME                     READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/webapp   1/1     1            1           7s
+
+NAME                                DESIRED   CURRENT   READY   AGE
+replicaset.apps/webapp-59d7d8df84   1         1         1       7s
+
+$ kubectl get configmap -n webapp-dev
+NAME                     DATA   AGE
+kube-root-ca.crt         1      7s
+web-content-2gd6cctf49   1      7s
+

@@ -1,0 +1,40 @@
+$ grep -v '^#' examples/webapp/overlays/prod/patch-resources.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webapp
+spec:
+  template:
+    spec:
+      containers:
+        - name: webapp           # merge key: selects the container to change
+          resources:
+            requests:
+              cpu: 100m          # base: 50m
+              memory: 64Mi       # base: 32Mi
+            limits:
+              cpu: 250m          # base: 100m
+              memory: 128Mi      # base: 64Mi
+
+$ kubectl kustomize examples/webapp/overlays/prod | grep -A 20 '    spec:' | grep -B2 -A8 'resources:'
+            port: http
+          periodSeconds: 5
+        resources:
+          limits:
+            cpu: 250m
+            memory: 128Mi
+          requests:
+            cpu: 100m
+            memory: 64Mi
+        volumeMounts:
+        - mountPath: /usr/share/nginx/html
+
+$ kubectl kustomize examples/webapp/overlays/prod | grep -c 'readinessProbe\|volumeMounts\|containerPort'
+3
+
+$ kubectl get deploy webapp -n webapp-prod -o jsonpath='{.spec.template.spec.containers[0].resources}{"\n"}'
+{"limits":{"cpu":"250m","memory":"128Mi"},"requests":{"cpu":"100m","memory":"64Mi"}}
+
+$ kubectl get deploy webapp -n webapp-dev -o jsonpath='{.spec.template.spec.containers[0].resources}{"\n"}'
+{"limits":{"cpu":"100m","memory":"64Mi"},"requests":{"cpu":"50m","memory":"32Mi"}}
+

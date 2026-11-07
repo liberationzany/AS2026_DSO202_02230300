@@ -1,0 +1,43 @@
+# =============================================================================
+# File      : examples/webapp/overlays/dev/kustomization.yaml
+# Practical : DSO202 Practical 5 - Kustomize
+# Purpose   : Development environment. Everything here is a DIFFERENCE from
+#             the base; nothing from the base is copied.
+# Workflow  : kubectl kustomize -> kubectl diff -k -> kubectl apply -k -> verify
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Compose: the shared base plus this environment's namespace object.
+resources:
+  - ../../base
+  - namespace.yaml
+
+# Transform: put every namespaced object into webapp-dev.
+namespace: webapp-dev
+
+# Transform: add the environment label to metadata and Pod templates, but NOT
+# to selectors (selectors are immutable and drive Service routing).
+labels:
+  - pairs:
+      app.kubernetes.io/environment: dev
+    includeSelectors: false
+    includeTemplates: true
+
+# Purpose-built transformer: one replica in dev.
+replicas:
+  - name: webapp
+    count: 1
+
+# Purpose-built transformer: dev runs the newer nginx tag ("experimental").
+images:
+  - name: nginx
+    newTag: 1.31-alpine
+
+# Generator: replace the base page with dev's own index.html. Changing that
+# file changes the hash, the reference, and therefore triggers a rollout.
+configMapGenerator:
+  - name: web-content
+    behavior: replace
+    files:
+      - index.html

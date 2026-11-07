@@ -1,0 +1,36 @@
+$ kubectl get configmap -n webapp-dev
+NAME                     DATA   AGE
+kube-root-ca.crt         1      3m25s
+web-content-2gd6cctf49   1      3m25s
+web-content-8hc9b5tgbm   1      2m27s
+
+$ kubectl delete -k examples/webapp/overlays/dev
+namespace "webapp-dev" deleted
+configmap "web-content-8hc9b5tgbm" deleted from webapp-dev namespace
+service "webapp" deleted from webapp-dev namespace
+deployment.apps "webapp" deleted from webapp-dev namespace
+
+$ kubectl delete -k examples/webapp/overlays/staging
+namespace "webapp-staging" deleted
+configmap "web-content-k4c25662dk" deleted from webapp-staging namespace
+service "webapp" deleted from webapp-staging namespace
+deployment.apps "webapp" deleted from webapp-staging namespace
+
+$ kubectl delete -k examples/webapp/overlays/prod
+namespace "webapp-prod" deleted
+configmap "web-content-9dkcdmkmf8" deleted from webapp-prod namespace
+service "webapp" deleted from webapp-prod namespace
+deployment.apps "webapp" deleted from webapp-prod namespace
+
+$ kubectl delete -k examples/webapp/overlays/qa
+namespace "webapp-qa" deleted
+configmap "web-content-h29tbth6hm" deleted from webapp-qa namespace
+service "webapp" deleted from webapp-qa namespace
+deployment.apps "webapp" deleted from webapp-qa namespace
+
+$ kubectl get ns | grep 'webapp-' || echo 'no webapp-* namespaces remain'
+no webapp-* namespaces remain
+
+$ kubectl get configmap -A | grep web-content || echo 'no web-content ConfigMaps remain (the orphaned dev v1 ConfigMap went with its namespace)'
+no web-content ConfigMaps remain (the orphaned dev v1 ConfigMap went with its namespace)
+

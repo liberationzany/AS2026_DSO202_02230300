@@ -1,0 +1,35 @@
+# =============================================================================
+# File      : examples/webapp/overlays/staging/kustomization.yaml
+# Practical : DSO202 Practical 5 - Kustomize
+# Purpose   : Staging environment ("release candidate"): same base, two
+#             replicas, the candidate image tag, its own page.
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+  - namespace.yaml
+
+namespace: webapp-staging
+
+labels:
+  - pairs:
+      app.kubernetes.io/environment: staging
+    includeSelectors: false
+    includeTemplates: true
+
+replicas:
+  - name: webapp
+    count: 2
+
+# The release candidate under test before it is promoted to prod.
+images:
+  - name: nginx
+    newTag: 1.31-alpine
+
+configMapGenerator:
+  - name: web-content
+    behavior: replace
+    files:
+      - index.html

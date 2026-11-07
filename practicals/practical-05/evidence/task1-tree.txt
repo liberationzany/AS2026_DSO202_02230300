@@ -1,0 +1,24 @@
+$ python C:/Users/zeroe/AppData/Local/Temp/claude/b3724c51438ec787/a2032ed2-2eb7-47d9-9825-3f9216c9c1fd/scratchpad/tree.py examples/webapp
+examples/webapp/
+├── base
+│   ├── deployment.yaml
+│   ├── index.html
+│   ├── kustomization.yaml
+│   └── service.yaml
+└── overlays
+    ├── dev
+    │   ├── index.html
+    │   ├── kustomization.yaml
+    │   └── namespace.yaml
+    ├── prod
+    │   ├── index.html
+    │   ├── kustomization.yaml
+    │   ├── namespace.yaml
+    │   └── patch-resources.yaml
+    ├── qa
+    ├── sandbox
+    └── staging
+        ├── index.html
+        ├── kustomization.yaml
+        └── namespace.yaml
+

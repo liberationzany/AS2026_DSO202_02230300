@@ -1,0 +1,42 @@
+# =============================================================================
+# File      : examples/webapp/overlays/prod/kustomization.yaml
+# Practical : DSO202 Practical 5 - Kustomize
+# Purpose   : Production: four replicas, the pinned (proven) image tag, a
+#             production resource policy, and its own page.
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+  - namespace.yaml
+
+namespace: webapp-prod
+
+labels:
+  - pairs:
+      app.kubernetes.io/environment: prod
+    includeSelectors: false
+    includeTemplates: true
+
+replicas:
+  - name: webapp
+    count: 4
+
+# Pinned release: prod stays on the tag that has already been proven, even
+# though dev and staging run the newer one. Stated explicitly so a change to
+# the base image cannot silently reach production.
+images:
+  - name: nginx
+    newTag: 1.30-alpine
+
+configMapGenerator:
+  - name: web-content
+    behavior: replace
+    files:
+      - index.html
+
+# Precise customisation: production resource policy. A strategic-merge patch,
+# because it reads like the Kubernetes fragment it changes.
+patches:
+  - path: patch-resources.yaml

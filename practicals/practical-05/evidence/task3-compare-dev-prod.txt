@@ -1,0 +1,103 @@
+$ kubectl kustomize examples/webapp/overlays/dev > evidence/rendered/webapp-dev.yaml && kubectl kustomize examples/webapp/overlays/prod > evidence/rendered/webapp-prod.yaml && wc -l evidence/rendered/webapp-dev.yaml evidence/rendered/webapp-prod.yaml
+  86 evidence/rendered/webapp-dev.yaml
+  86 evidence/rendered/webapp-prod.yaml
+ 172 total
+
+$ diff -u evidence/rendered/webapp-dev.yaml evidence/rendered/webapp-prod.yaml || true
+--- evidence/rendered/webapp-dev.yaml	2026-11-07 21:46:12.405317800 +0600
++++ evidence/rendered/webapp-prod.yaml	2026-11-07 21:46:12.594607800 +0600
+@@ -2,8 +2,8 @@
+ kind: Namespace
+ metadata:
+   labels:
+-    app.kubernetes.io/environment: dev
+-  name: webapp-dev
++    app.kubernetes.io/environment: prod
++  name: webapp-prod
+ ---
+ apiVersion: v1
+ data:
+@@ -11,25 +11,25 @@
+     <!DOCTYPE html>
+     <html>
+     <body>
+-    <h1>DEV v1</h1>
+-    <p>Environment: dev. Experimental build, one replica.</p>
++    <h1>PRODUCTION</h1>
++    <p>Environment: prod. Pinned release, four replicas, raised resources.</p>
+     </body>
+     </html>
+ kind: ConfigMap
+ metadata:
+   labels:
+-    app.kubernetes.io/environment: dev
+-  name: web-content-2gd6cctf49
+-  namespace: webapp-dev
++    app.kubernetes.io/environment: prod
++  name: web-content-9dkcdmkmf8
++  namespace: webapp-prod
+ ---
+ apiVersion: v1
+ kind: Service
+ metadata:
+   labels:
+-    app.kubernetes.io/environment: dev
++    app.kubernetes.io/environment: prod
+     app.kubernetes.io/name: webapp
+   name: webapp
+-  namespace: webapp-dev
++  namespace: webapp-prod
+ spec:
+   ports:
+   - name: http
+@@ -43,23 +43,23 @@
+ kind: Deployment
+ metadata:
+   labels:
+-    app.kubernetes.io/environment: dev
++    app.kubernetes.io/environment: prod
+     app.kubernetes.io/name: webapp
+   name: webapp
+-  namespace: webapp-dev
++  namespace: webapp-prod
+ spec:
+-  replicas: 1
++  replicas: 4
+   selector:
+     matchLabels:
+       app.kubernetes.io/name: webapp
+   template:
+     metadata:
+       labels:
+-        app.kubernetes.io/environment: dev
++        app.kubernetes.io/environment: prod
+         app.kubernetes.io/name: webapp
+     spec:
+       containers:
+-      - image: nginx:1.31-alpine
++      - image: nginx:1.30-alpine
+         name: webapp
+         ports:
+         - containerPort: 80
+@@ -71,16 +71,16 @@
+           periodSeconds: 5
+         resources:
+           limits:
++            cpu: 250m
++            memory: 128Mi
++          requests:
+             cpu: 100m
+             memory: 64Mi
+-          requests:
+-            cpu: 50m
+-            memory: 32Mi
+         volumeMounts:
+         - mountPath: /usr/share/nginx/html
+           name: web-content
+           readOnly: true
+       volumes:
+       - configMap:
+-          name: web-content-2gd6cctf49
++          name: web-content-9dkcdmkmf8
+         name: web-content
+
