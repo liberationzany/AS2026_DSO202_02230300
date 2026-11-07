@@ -20,7 +20,7 @@ metadata:
 spec:
   # Experiment 1 changes this value in Git (2 -> 4). Experiment 2 changes it in
   # the cluster with 'kubectl scale' and Argo CD's self-heal puts it back.
-  replicas: 2
+  replicas: 4
   selector:
     matchLabels:
       app: webapp
