@@ -1,0 +1,5 @@
+# The prod environment's namespace.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dso202-a3-prod

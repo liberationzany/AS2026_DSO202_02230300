@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "tasktracker values",
+  "type": "object",
+  "required": ["images", "frontend", "backend", "db", "ingress", "rbac", "podDisruptionBudget"],
+  "definitions": {
+    "image": {
+      "type": "object",
+      "required": ["repository", "tag"],
+      "properties": {
+        "repository": {"type": "string", "minLength": 1},
+        "tag": {"type": "string", "minLength": 1}
+      }
+    },
+    "tier": {
+      "type": "object",
+      "required": ["replicas", "resources"],
+      "properties": {
+        "replicas": {"type": "integer", "minimum": 1, "maximum": 10},
+        "resources": {"type": "object"}
+      }
+    }
+  },
+  "properties": {
+    "images": {
+      "type": "object",
+      "required": ["pullPolicy", "frontend", "backend", "db"],
+      "properties": {
+        "pullPolicy": {"enum": ["Always", "IfNotPresent", "Never"]},
+        "frontend": {"$ref": "#/definitions/image"},
+        "backend": {"$ref": "#/definitions/image"},
+        "db": {"$ref": "#/definitions/image"}
+      }
+    },
+    "frontend": {"$ref": "#/definitions/tier"},
+    "backend": {"$ref": "#/definitions/tier"},
+    "db": {
+      "type": "object",
+      "required": ["name", "user", "password", "storage", "retainOnDelete"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z_][a-z0-9_]*$"},
+        "user": {"type": "string", "pattern": "^[a-z_][a-z0-9_]*$"},
+        "password": {"type": "string"},
+        "storage": {
+          "type": "object",
+          "required": ["size"],
+          "properties": {
+            "size": {"type": "string", "pattern": "^[0-9]+(Mi|Gi|Ti)$"},
+            "storageClassName": {"type": "string"}
+          }
+        },
+        "retainOnDelete": {"type": "boolean"},
+        "resources": {"type": "object"}
+      }
+    },
+    "ingress": {
+      "type": "object",
+      "required": ["className", "host", "publicPort", "tls"],
+      "properties": {
+        "className": {"type": "string", "minLength": 1},
+        "host": {"type": "string", "pattern": "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"},
+        "publicPort": {"type": "integer", "minimum": 1, "maximum": 65535},
+        "tls": {
+          "type": "object",
+          "required": ["enabled", "selfSigned"],
+          "properties": {
+            "enabled": {"type": "boolean"},
+            "selfSigned": {"type": "boolean"},
+            "secretName": {"type": "string"}
+          }
+        }
+      }
+    },
+    "rbac": {
+      "type": "object",
+      "properties": {
+        "createDeployer": {"type": "boolean"},
+        "viewerGroup": {"type": "string"}
+      }
+    },
+    "podDisruptionBudget": {
+      "type": "object",
+      "required": ["enabled", "minAvailable"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "minAvailable": {"type": "integer", "minimum": 1}
+      }
+    }
+  }
+}

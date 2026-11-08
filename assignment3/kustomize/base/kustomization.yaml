@@ -1,0 +1,56 @@
+# base/kustomization.yaml - the Assignment 2 Task Tracker as a Kustomize base.
+#
+# Everything an environment does NOT change lives here: the three tiers, their
+# Services, the Ingress, the per-workload ServiceAccounts and the deployer
+# RBAC. Overlays (../overlays/dev, ../overlays/prod) only state differences.
+#
+# The base has no namespace and no Namespace object; each overlay sets both,
+# so the same base can be installed side by side as dev and prod.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: tasktracker
+      app.kubernetes.io/managed-by: kustomize
+    includeSelectors: false   # never change selectors: they are immutable
+
+resources:
+  - serviceaccounts.yaml
+  - rbac-deployer.yaml
+  - rbac-viewers.yaml
+  - service-db-headless.yaml
+  - statefulset-db.yaml
+  - service-db.yaml
+  - deployment-backend.yaml
+  - service-backend.yaml
+  - deployment-frontend.yaml
+  - service-frontend.yaml
+  - ingress.yaml
+
+# Assignment 2 kept app-config and db-credentials as fixed-name objects.
+# Generated here instead, so the name gets a content-hash suffix
+# (app-config-<hash>) and every reference to it is rewritten. A config change
+# therefore changes the Pod templates and rolls the Pods, which a fixed-name
+# ConfigMap never does.
+configMapGenerator:
+  - name: app-config
+    literals:
+      - DB_HOST=db-svc
+      - DB_PORT=5432
+      - DB_NAME=taskdb
+      - APP_PORT=8080
+      - POSTGRES_DB=taskdb            # must equal DB_NAME
+      # Per-environment: the public origin. Overlays replace both.
+      - CORS_ORIGIN=https://tasktracker.localhost:8443
+      - BACKEND_URL=https://tasktracker.localhost:8443
+
+# Classroom-only credentials, as in Assignments 1 and 2. A real deployment
+# would use an external secret store instead of literals in Git.
+secretGenerator:
+  - name: db-credentials
+    literals:
+      - DB_USER=taskuser
+      - DB_PASSWORD=taskpass
+      - POSTGRES_USER=taskuser        # must equal DB_USER
+      - POSTGRES_PASSWORD=taskpass    # must equal DB_PASSWORD

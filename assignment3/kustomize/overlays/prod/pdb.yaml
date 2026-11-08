@@ -1,0 +1,27 @@
+# pdb.yaml - prod-only PodDisruptionBudgets.
+# A voluntary disruption (kubectl drain, a node upgrade) may evict Pods only
+# while at least minAvailable replicas of the tier stay Ready. With 3
+# replicas and minAvailable 2, a drain proceeds one Pod at a time.
+# No PDB for the single-replica database: minAvailable 1 would block every
+# drain of its node, which is a decision for a real operator, not a default.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: frontend
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tasktracker
+      app.kubernetes.io/component: frontend
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: backend
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tasktracker
+      app.kubernetes.io/component: backend

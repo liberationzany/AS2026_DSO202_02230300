@@ -1,0 +1,83 @@
+# 1) A config change in the dev overlay (temporary extra literal) -> new hash -> rollout
+$ kubectl get deploy backend -n dso202-a3-dev -o jsonpath='{.metadata.generation} {.spec.template.spec.containers[0].env[0].valueFrom.configMapKeyRef.name}'; echo
+1 app-config-h29cdc7dhk
+
+$ kubectl diff -k kustomize/overlays/dev | grep -E '^[-+] |^[-+]{3}' | grep -vE 'generation|^\+\+\+|^---' | head -20
+-              name: app-config-h29cdc7dhk
++              name: app-config-h7d5549f49
+-              name: app-config-h29cdc7dhk
++              name: app-config-h7d5549f49
+-              name: app-config-h29cdc7dhk
++              name: app-config-h7d5549f49
+-              name: app-config-h29cdc7dhk
++              name: app-config-h7d5549f49
+-              name: app-config-h29cdc7dhk
++              name: app-config-h7d5549f49
+-              name: app-config-h29cdc7dhk
++              name: app-config-h7d5549f49
+-              name: app-config-h29cdc7dhk
++              name: app-config-h7d5549f49
++  APP_PORT: "8080"
++  BACKEND_URL: https://tasktracker-dev.localhost:8443
++  CORS_ORIGIN: https://tasktracker-dev.localhost:8443
++  DB_HOST: db-svc
++  DB_NAME: taskdb
++  DB_PORT: "5432"
+
+$ kubectl apply -k kustomize/overlays/dev | grep -v unchanged
+configmap/app-config-h7d5549f49 created
+deployment.apps/backend configured
+deployment.apps/frontend configured
+statefulset.apps/db configured
+
+$ kubectl rollout status deploy/backend -n dso202-a3-dev --timeout=120s; kubectl get deploy backend -n dso202-a3-dev -o jsonpath='{.metadata.generation} {.spec.template.spec.containers[0].env[0].valueFrom.configMapKeyRef.name}'; echo
+Waiting for deployment "backend" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "backend" rollout to finish: 1 old replicas are pending termination...
+deployment "backend" successfully rolled out
+2 app-config-h7d5549f49
+
+$ kubectl get configmaps -n dso202-a3-dev
+NAME                    DATA   AGE
+app-config-h29cdc7dhk   7      59s
+app-config-h7d5549f49   8      9s
+kube-root-ca.crt        1      59s
+
+$ kubectl exec deploy/backend -n dso202-a3-dev -- printenv NODE_OPTIONS
+command terminated with exit code 1
+
+# 2) Revert: the old hash name returns; the orphaned ConfigMap is left behind (apply never deletes)
+$ git diff --stat -- kustomize/overlays/dev/kustomization.yaml; kubectl apply -k kustomize/overlays/dev | grep -v unchanged
+deployment.apps/backend configured
+deployment.apps/frontend configured
+statefulset.apps/db configured
+
+$ kubectl rollout status deploy/backend -n dso202-a3-dev --timeout=120s >/dev/null; kubectl get configmaps -n dso202-a3-dev
+NAME                    DATA   AGE
+app-config-h29cdc7dhk   7      66s
+app-config-h7d5549f49   8      16s
+kube-root-ca.crt        1      66s
+
+$ kubectl delete configmap -n dso202-a3-dev $(kubectl get cm -n dso202-a3-dev -o name | grep app-config- | grep -v $(kubectl kustomize kustomize/overlays/dev | grep -m1 -o 'app-config-[a-z0-9]*') | cut -d/ -f2)
+configmap "app-config-h7d5549f49" deleted from dso202-a3-dev namespace
+
+# 3) PodDisruptionBudget in prod: evict backend Pods one after another through the Eviction API
+$ kubectl get pdb backend -n dso202-a3-prod
+NAME      MIN AVAILABLE   MAX UNAVAILABLE   ALLOWED DISRUPTIONS   AGE
+backend   2               N/A               1                     65s
+
+$ kubectl create --raw /api/v1/namespaces/dso202-a3-prod/pods/backend-5c487b4469-2wzcs/eviction -f - <<< '{"apiVersion":"policy/v1","kind":"Eviction","metadata":{"name":"backend-5c487b4469-2wzcs","namespace":"dso202-a3-prod"}}' 2>&1 | head -c 300; echo
+{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Success","code":201}
+
+
+$ kubectl create --raw /api/v1/namespaces/dso202-a3-prod/pods/backend-5c487b4469-c5995/eviction -f - <<< '{"apiVersion":"policy/v1","kind":"Eviction","metadata":{"name":"backend-5c487b4469-c5995","namespace":"dso202-a3-prod"}}' 2>&1 | head -c 300; echo
+Error from server (TooManyRequests): Cannot evict pod as it would violate the pod's disruption budget.
+
+
+$ kubectl get pdb backend -n dso202-a3-prod; kubectl rollout status deploy/backend -n dso202-a3-prod --timeout=120s; kubectl get pdb backend -n dso202-a3-prod
+NAME      MIN AVAILABLE   MAX UNAVAILABLE   ALLOWED DISRUPTIONS   AGE
+backend   2               N/A               0                     65s
+Waiting for deployment "backend" rollout to finish: 2 of 3 updated replicas are available...
+deployment "backend" successfully rolled out
+NAME      MIN AVAILABLE   MAX UNAVAILABLE   ALLOWED DISRUPTIONS   AGE
+backend   2               N/A               1                     71s
+

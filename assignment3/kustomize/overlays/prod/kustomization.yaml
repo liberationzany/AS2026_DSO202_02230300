@@ -1,0 +1,51 @@
+# overlays/prod/kustomization.yaml - the production-shaped copy.
+#
+# Differences from the base:
+#   - namespace dso202-a3-prod and host tasktracker-prod.localhost;
+#   - three replicas of the frontend and backend;
+#   - larger requests/limits for the backend and the database
+#     (strategic-merge patch);
+#   - a larger database volume (5Gi);
+#   - PodDisruptionBudgets, so a node drain can never take every replica of
+#     a tier down at once. They exist ONLY in prod: with one dev replica, a
+#     minAvailable of 1 would block every drain.
+#   - the database PVC keeps the base's Retain policy.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: dso202-a3-prod
+
+resources:
+  - namespace.yaml
+  - ../../base
+  - pdb.yaml
+
+labels:
+  - pairs:
+      app.kubernetes.io/instance: tasktracker-prod
+      dso202/environment: prod
+    includeSelectors: false
+
+replicas:
+  - name: frontend
+    count: 3
+  - name: backend
+    count: 3
+
+configMapGenerator:
+  - name: app-config
+    behavior: merge
+    literals:
+      - CORS_ORIGIN=https://tasktracker-prod.localhost:8443
+      - BACKEND_URL=https://tasktracker-prod.localhost:8443
+
+patches:
+  - path: patch-resources.yaml           # strategic merge: kind/name inside the file
+  - target:
+      kind: Ingress
+      name: tasktracker
+    path: patch-ingress-host.yaml
+  - target:
+      kind: StatefulSet
+      name: db
+    path: patch-db-storage.yaml

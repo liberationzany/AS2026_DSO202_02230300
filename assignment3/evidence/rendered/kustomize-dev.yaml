@@ -1,0 +1,600 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    app.kubernetes.io/instance: tasktracker-dev
+    dso202/environment: dev
+  name: dso202-a3-dev
+---
+apiVersion: v1
+automountServiceAccountToken: false
+kind: ServiceAccount
+metadata:
+  labels:
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/instance: tasktracker-dev
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/part-of: tasktracker
+    dso202/environment: dev
+  name: backend
+  namespace: dso202-a3-dev
+---
+apiVersion: v1
+automountServiceAccountToken: false
+kind: ServiceAccount
+metadata:
+  labels:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/instance: tasktracker-dev
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/part-of: tasktracker
+    dso202/environment: dev
+  name: db
+  namespace: dso202-a3-dev
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app.kubernetes.io/instance: tasktracker-dev
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/part-of: tasktracker
+    dso202/environment: dev
+  name: deployer
+  namespace: dso202-a3-dev
+---
+apiVersion: v1
+automountServiceAccountToken: false
+kind: ServiceAccount
+metadata:
+  labels:
+    app.kubernetes.io/component: frontend
+    app.kubernetes.io/instance: tasktracker-dev
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/part-of: tasktracker
+    dso202/environment: dev
+  name: frontend
+  namespace: dso202-a3-dev
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/instance: tasktracker-dev
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/part-of: tasktracker
+    dso202/environment: dev
+  name: deployer
+  namespace: dso202-a3-dev
+rules:
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - statefulsets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - services
+  - configmaps
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - ingresses
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+- apiGroups:
+  - apps
+  resources:
+  - replicasets
+  - controllerrevisions
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - pods/log
+  - events
+  - endpoints
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/instance: tasktracker-dev
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/part-of: tasktracker
+    dso202/environment: dev
+  name: deployer
+  namespace: dso202-a3-dev
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: deployer
+subjects:
+- kind: ServiceAccount
+  name: deployer
+  namespace: dso202-a3-dev
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/instance: tasktracker-dev
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/part-of: tasktracker
+    dso202/environment: dev
+  name: tasktracker-developers-view
+  namespace: dso202-a3-dev
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: Group
+  name: tasktracker-developers
+---
+apiVersion: v1
+data:
+  APP_PORT: "8080"
+  BACKEND_URL: https://tasktracker-dev.localhost:8443
+  CORS_ORIGIN: https://tasktracker-dev.localhost:8443
+  DB_HOST: db-svc
+  DB_NAME: taskdb
+  DB_PORT: "5432"
+  POSTGRES_DB: taskdb
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: tasktracker-dev
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/part-of: tasktracker
+    dso202/environment: dev
+  name: app-config-h29cdc7dhk
+  namespace: dso202-a3-dev
+---
+apiVersion: v1
+data:
+  DB_PASSWORD: dGFza3Bhc3M=
+  DB_USER: dGFza3VzZXI=
+  POSTGRES_PASSWORD: dGFza3Bhc3M=
+  POSTGRES_USER: dGFza3VzZXI=
+kind: Secret
+metadata:
+  labels:
+    app.kubernetes.io/instance: tasktracker-dev
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/part-of: tasktracker
+    dso202/environment: dev
+  name: db-credentials-g54k576c5g
+  namespace: dso202-a3-dev
+type: Opaque
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/instance: tasktracker-dev
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/part-of: tasktracker
+    dso202/environment: dev
+  name: backend-svc
+  namespace: dso202-a3-dev
+spec:
+  ports:
+  - name: http
+    port: 8080
+    targetPort: http
+  selector:
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/name: tasktracker
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/instance: tasktracker-dev
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/part-of: tasktracker
+    dso202/environment: dev
+  name: db-headless
+  namespace: dso202-a3-dev
+spec:
+  clusterIP: None
+  ports:
+  - name: postgres
+    port: 5432
+    targetPort: postgres
+  selector:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/name: tasktracker
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/instance: tasktracker-dev
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/part-of: tasktracker
+    dso202/environment: dev
+  name: db-svc
+  namespace: dso202-a3-dev
+spec:
+  ports:
+  - name: postgres
+    port: 5432
+    targetPort: postgres
+  selector:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/name: tasktracker
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: frontend
+    app.kubernetes.io/instance: tasktracker-dev
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/part-of: tasktracker
+    dso202/environment: dev
+  name: frontend-svc
+  namespace: dso202-a3-dev
+spec:
+  ports:
+  - name: http
+    port: 8080
+    targetPort: http
+  selector:
+    app.kubernetes.io/component: frontend
+    app.kubernetes.io/name: tasktracker
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/instance: tasktracker-dev
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/part-of: tasktracker
+    dso202/environment: dev
+  name: backend
+  namespace: dso202-a3-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: backend
+      app.kubernetes.io/name: tasktracker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: backend
+        app.kubernetes.io/name: tasktracker
+        app.kubernetes.io/part-of: tasktracker
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - env:
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              key: DB_HOST
+              name: app-config-h29cdc7dhk
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              key: DB_PORT
+              name: app-config-h29cdc7dhk
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              key: DB_NAME
+              name: app-config-h29cdc7dhk
+        - name: APP_PORT
+          valueFrom:
+            configMapKeyRef:
+              key: APP_PORT
+              name: app-config-h29cdc7dhk
+        - name: CORS_ORIGIN
+          valueFrom:
+            configMapKeyRef:
+              key: CORS_ORIGIN
+              name: app-config-h29cdc7dhk
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              key: DB_USER
+              name: db-credentials-g54k576c5g
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: DB_PASSWORD
+              name: db-credentials-g54k576c5g
+        image: dso202-backend:1.1
+        imagePullPolicy: Never
+        livenessProbe:
+          failureThreshold: 3
+          periodSeconds: 10
+          tcpSocket:
+            port: http
+        name: backend
+        ports:
+        - containerPort: 8080
+          name: http
+        readinessProbe:
+          failureThreshold: 2
+          httpGet:
+            path: /api/status
+            port: http
+          periodSeconds: 5
+        resources:
+          limits:
+            cpu: 250m
+            memory: 128Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        startupProbe:
+          failureThreshold: 60
+          periodSeconds: 5
+          tcpSocket:
+            port: http
+      securityContext:
+        runAsGroup: 101
+        runAsNonRoot: true
+        runAsUser: 100
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: backend
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: frontend
+    app.kubernetes.io/instance: tasktracker-dev
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/part-of: tasktracker
+    dso202/environment: dev
+  name: frontend
+  namespace: dso202-a3-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: frontend
+      app.kubernetes.io/name: tasktracker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: frontend
+        app.kubernetes.io/name: tasktracker
+        app.kubernetes.io/part-of: tasktracker
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - env:
+        - name: BACKEND_URL
+          valueFrom:
+            configMapKeyRef:
+              key: BACKEND_URL
+              name: app-config-h29cdc7dhk
+        image: dso202-frontend:1.0
+        imagePullPolicy: Never
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        name: frontend
+        ports:
+        - containerPort: 8080
+          name: http
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          periodSeconds: 5
+        resources:
+          limits:
+            cpu: 200m
+            memory: 64Mi
+          requests:
+            cpu: 50m
+            memory: 32Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+      securityContext:
+        runAsGroup: 101
+        runAsNonRoot: true
+        runAsUser: 101
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: frontend
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/instance: tasktracker-dev
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/part-of: tasktracker
+    dso202/environment: dev
+  name: db
+  namespace: dso202-a3-dev
+spec:
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Delete
+    whenScaled: Retain
+  podManagementPolicy: OrderedReady
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: database
+      app.kubernetes.io/name: tasktracker
+  serviceName: db-headless
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: database
+        app.kubernetes.io/name: tasktracker
+        app.kubernetes.io/part-of: tasktracker
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - env:
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              key: POSTGRES_DB
+              name: app-config-h29cdc7dhk
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              key: POSTGRES_USER
+              name: db-credentials-g54k576c5g
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: POSTGRES_PASSWORD
+              name: db-credentials-g54k576c5g
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        image: dso202-db:1.0
+        imagePullPolicy: Never
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - pg_isready -h 127.0.0.1
+          failureThreshold: 6
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        name: db
+        ports:
+        - containerPort: 5432
+          name: postgres
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+          failureThreshold: 3
+          periodSeconds: 5
+        resources:
+          limits:
+            cpu: 500m
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: data
+      serviceAccountName: db
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - metadata:
+      labels:
+        app.kubernetes.io/component: database
+        app.kubernetes.io/name: tasktracker
+      name: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  labels:
+    app.kubernetes.io/instance: tasktracker-dev
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/part-of: tasktracker
+    dso202/environment: dev
+  name: tasktracker
+  namespace: dso202-a3-dev
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: tasktracker-dev.localhost
+    http:
+      paths:
+      - backend:
+          service:
+            name: backend-svc
+            port:
+              name: http
+        path: /api
+        pathType: Prefix
+      - backend:
+          service:
+            name: frontend-svc
+            port:
+              name: http
+        path: /
+        pathType: Prefix
+  tls:
+  - hosts:
+    - tasktracker-dev.localhost
+    secretName: tasktracker-tls

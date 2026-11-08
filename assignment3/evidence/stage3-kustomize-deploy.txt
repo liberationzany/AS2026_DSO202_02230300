@@ -1,0 +1,102 @@
+$ kubectl apply -k kustomize/overlays/dev
+namespace/dso202-a3-dev created
+serviceaccount/backend created
+serviceaccount/db created
+serviceaccount/deployer created
+serviceaccount/frontend created
+role.rbac.authorization.k8s.io/deployer created
+rolebinding.rbac.authorization.k8s.io/deployer created
+rolebinding.rbac.authorization.k8s.io/tasktracker-developers-view created
+configmap/app-config-h29cdc7dhk created
+secret/db-credentials-g54k576c5g created
+service/backend-svc created
+service/db-headless created
+service/db-svc created
+service/frontend-svc created
+deployment.apps/backend created
+deployment.apps/frontend created
+statefulset.apps/db created
+ingress.networking.k8s.io/tasktracker created
+
+$ ../assignment2/scripts/make-tls-secret.sh dso202-a3-dev tasktracker-dev.localhost 2>&1 | grep -E 'secret|subject='
+secret/tasktracker-tls created
+subject=CN=tasktracker-dev.localhost, O=dso202
+
+$ kubectl apply -k kustomize/overlays/prod
+namespace/dso202-a3-prod created
+serviceaccount/backend created
+serviceaccount/db created
+serviceaccount/deployer created
+serviceaccount/frontend created
+role.rbac.authorization.k8s.io/deployer created
+rolebinding.rbac.authorization.k8s.io/deployer created
+rolebinding.rbac.authorization.k8s.io/tasktracker-developers-view created
+configmap/app-config-kk84dbtc8k created
+secret/db-credentials-g54k576c5g created
+service/backend-svc created
+service/db-headless created
+service/db-svc created
+service/frontend-svc created
+deployment.apps/backend created
+deployment.apps/frontend created
+statefulset.apps/db created
+poddisruptionbudget.policy/backend created
+poddisruptionbudget.policy/frontend created
+ingress.networking.k8s.io/tasktracker created
+
+$ ../assignment2/scripts/make-tls-secret.sh dso202-a3-prod tasktracker-prod.localhost 2>&1 | grep -E 'secret|subject='
+secret/tasktracker-tls created
+subject=CN=tasktracker-prod.localhost, O=dso202
+
+$ kubectl get pods,pvc,pdb,ingress -n dso202-a3-dev
+NAME                           READY   STATUS    RESTARTS   AGE
+pod/backend-dd9f4fb69-knmfh    1/1     Running   0          17s
+pod/db-0                       1/1     Running   0          17s
+pod/frontend-56dddf6d5-s7rm6   1/1     Running   0          17s
+
+NAME                              STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+persistentvolumeclaim/data-db-0   Bound    pvc-09be74fe-c333-49e4-a6a7-cdb7719030f3   1Gi        RWO            standard       <unset>                 17s
+
+NAME                                    CLASS   HOSTS                       ADDRESS   PORTS     AGE
+ingress.networking.k8s.io/tasktracker   nginx   tasktracker-dev.localhost             80, 443   17s
+
+$ kubectl get pods,pvc,pdb,ingress -n dso202-a3-prod
+NAME                            READY   STATUS    RESTARTS   AGE
+pod/backend-5c487b4469-2wzcs    1/1     Running   0          15s
+pod/backend-5c487b4469-c5995    1/1     Running   0          15s
+pod/backend-5c487b4469-vszgq    1/1     Running   0          15s
+pod/db-0                        1/1     Running   0          15s
+pod/frontend-55996c9cf4-2tvxc   1/1     Running   0          15s
+pod/frontend-55996c9cf4-49hcc   1/1     Running   0          15s
+pod/frontend-55996c9cf4-tgphh   1/1     Running   0          15s
+
+NAME                              STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+persistentvolumeclaim/data-db-0   Bound    pvc-281eeac3-d695-45ed-8550-48d5cfa65600   5Gi        RWO            standard       <unset>                 15s
+
+NAME                                  MIN AVAILABLE   MAX UNAVAILABLE   ALLOWED DISRUPTIONS   AGE
+poddisruptionbudget.policy/backend    2               N/A               1                     15s
+poddisruptionbudget.policy/frontend   2               N/A               1                     15s
+
+NAME                                    CLASS   HOSTS                        ADDRESS   PORTS     AGE
+ingress.networking.k8s.io/tasktracker   nginx   tasktracker-prod.localhost             80, 443   15s
+
+$ curl -sk -w '  [%{http_code}]\n' https://tasktracker-dev.localhost:8443/api/status; curl -sk https://tasktracker-dev.localhost:8443/config.js | grep BACKEND_URL
+{"status":"ok","db":"connected"}  [200]
+  BACKEND_URL: "https://tasktracker-dev.localhost:8443"
+
+$ curl -sk -w '  [%{http_code}]\n' https://tasktracker-prod.localhost:8443/api/status; curl -sk https://tasktracker-prod.localhost:8443/config.js | grep BACKEND_URL
+{"status":"ok","db":"connected"}  [200]
+  BACKEND_URL: "https://tasktracker-prod.localhost:8443"
+
+$ curl -sk -X POST -H 'Content-Type: application/json' -d '{"title":"dev task via kustomize"}' https://tasktracker-dev.localhost:8443/api/tasks; echo; curl -sk https://tasktracker-dev.localhost:8443/api/tasks | python -c 'import json,sys; print(len(json.load(sys.stdin)), "tasks")'
+{"id":4,"title":"dev task via kustomize","description":null,"status":"pending","created_at":"2026-11-08T08:20:30.387Z"}
+4 tasks
+
+$ curl -sk -X POST -H 'Content-Type: application/json' -d '{"title":"prod task via kustomize"}' https://tasktracker-prod.localhost:8443/api/tasks; echo; curl -sk https://tasktracker-prod.localhost:8443/api/tasks | python -c 'import json,sys; print(len(json.load(sys.stdin)), "tasks")'
+{"id":4,"title":"prod task via kustomize","description":null,"status":"pending","created_at":"2026-11-08T08:20:31.865Z"}
+4 tasks
+
+$ kubectl get statefulset db -n dso202-a3-dev -o jsonpath='dev  whenDeleted={.spec.persistentVolumeClaimRetentionPolicy.whenDeleted}{"\n"}'; kubectl get statefulset db -n dso202-a3-prod -o jsonpath='prod whenDeleted={.spec.persistentVolumeClaimRetentionPolicy.whenDeleted}{"\n"}'
+dev  whenDeleted=Delete
+prod whenDeleted=Retain
+

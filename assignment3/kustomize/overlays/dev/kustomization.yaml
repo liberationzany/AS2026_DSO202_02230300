@@ -1,0 +1,48 @@
+# overlays/dev/kustomization.yaml - a small, disposable development copy.
+#
+# Differences from the base:
+#   - namespace dso202-a3-dev and host tasktracker-dev.localhost;
+#   - one replica of the frontend and backend (the base has two);
+#   - the database volume is DELETED with the StatefulSet: dev data is
+#     disposable, and leftover PVCs would otherwise pile up between rebuilds;
+#   - a "dev-" name prefix is NOT used: names stay identical across
+#     environments, and namespaces keep the environments apart.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: dso202-a3-dev
+
+resources:
+  - namespace.yaml
+  - ../../base
+
+labels:
+  - pairs:
+      app.kubernetes.io/instance: tasktracker-dev
+      dso202/environment: dev
+    includeSelectors: false
+
+replicas:
+  - name: frontend
+    count: 1
+  - name: backend
+    count: 1
+
+configMapGenerator:
+  - name: app-config
+    behavior: merge                 # change two keys, keep the rest of the base's
+    literals:
+      - CORS_ORIGIN=https://tasktracker-dev.localhost:8443
+      - BACKEND_URL=https://tasktracker-dev.localhost:8443
+
+patches:
+  # The host appears twice in the Ingress (TLS and rule). A JSON 6902 patch
+  # replaces exactly those two list entries.
+  - target:
+      kind: Ingress
+      name: tasktracker
+    path: patch-ingress-host.yaml
+  - target:
+      kind: StatefulSet
+      name: db
+    path: patch-db-retention.yaml

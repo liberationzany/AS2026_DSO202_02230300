@@ -1,0 +1,19 @@
+{{- /*
+configmap.yaml - the non-secret half of the env var contract.
+BACKEND_URL and CORS_ORIGIN come from tasktracker.origin, so they cannot
+drift from the Ingress host (in Kustomize they had to be written twice).
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "tasktracker.fullname" . }}-config
+  labels:
+    {{- include "tasktracker.labels" . | nindent 4 }}
+data:
+  DB_HOST: {{ include "tasktracker.fullname" . }}-db
+  DB_PORT: "5432"
+  DB_NAME: {{ .Values.db.name | quote }}
+  POSTGRES_DB: {{ .Values.db.name | quote }}
+  APP_PORT: "8080"
+  CORS_ORIGIN: {{ include "tasktracker.origin" . | quote }}
+  BACKEND_URL: {{ include "tasktracker.origin" . | quote }}

@@ -1,0 +1,83 @@
+{{- /*
+backend.yaml - the Express API: Deployment and ClusterIP Service.
+Probes as in Assignment 2 (startup TCP, readiness /api/status, liveness TCP).
+The checksum annotations roll the Pods whenever the rendered ConfigMap or
+Secret changes; without them, env vars read at start would go stale.
+*/}}
+{{- $fullname := include "tasktracker.fullname" . -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}-backend
+  labels:
+    {{- include "tasktracker.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  replicas: {{ .Values.backend.replicas }}
+  selector:
+    matchLabels:
+      {{- include "tasktracker.selectorLabels" (dict "ctx" . "component" "backend") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "tasktracker.labels" . | nindent 8 }}
+        app.kubernetes.io/component: backend
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ $fullname }}-backend
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 100
+        runAsGroup: 101
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: backend
+          image: {{ include "tasktracker.image" .Values.images.backend | quote }}
+          imagePullPolicy: {{ .Values.images.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            # Every key of both objects becomes an env var. The backend
+            # ignores the POSTGRES_* keys it does not read.
+            - configMapRef:
+                name: {{ $fullname }}-config
+            - secretRef:
+                name: {{ $fullname }}-db-credentials
+          startupProbe:
+            tcpSocket: {port: http}
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: {path: /api/status, port: http}
+            periodSeconds: 5
+            failureThreshold: 2
+          livenessProbe:
+            tcpSocket: {port: http}
+            periodSeconds: 10
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ["ALL"]}
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullname }}-backend
+  labels:
+    {{- include "tasktracker.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "tasktracker.selectorLabels" (dict "ctx" . "component" "backend") | nindent 4 }}
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

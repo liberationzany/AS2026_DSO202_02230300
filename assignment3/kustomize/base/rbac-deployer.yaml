@@ -1,0 +1,47 @@
+# base/rbac-deployer.yaml - from assignment2/manifests/12-rbac-deployer.yaml.
+# metadata.namespace removed: each overlay sets it with `namespace:`.
+# Full design notes are in the Assignment 2 file's header.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: deployer
+  labels:
+    app.kubernetes.io/part-of: tasktracker
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: deployer
+  labels:
+    app.kubernetes.io/part-of: tasktracker
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["services", "configmaps", "secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  # Read-only access, so "kubectl rollout status" and troubleshooting work.
+  - apiGroups: ["apps"]
+    resources: ["replicasets", "controllerrevisions"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "events", "endpoints"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: deployer
+  labels:
+    app.kubernetes.io/part-of: tasktracker
+subjects:
+  - kind: ServiceAccount
+    name: deployer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: deployer

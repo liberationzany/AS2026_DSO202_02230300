@@ -1,0 +1,140 @@
+$ kubectl version --client | head -2
+Client Version: v1.36.3
+Kustomize Version: v5.8.1
+
+$ kubectl kustomize kustomize/base | grep -E "^kind:" | sort | uniq -c
+      1 kind: ConfigMap
+      2 kind: Deployment
+      1 kind: Ingress
+      1 kind: Role
+      2 kind: RoleBinding
+      1 kind: Secret
+      4 kind: Service
+      4 kind: ServiceAccount
+      1 kind: StatefulSet
+
+# dev vs prod, with the label/namespace lines filtered out so only the real decisions remain (full output: rendered/)
+$ diff <(kubectl kustomize kustomize/overlays/dev | grep -vE 'instance: tasktracker-|environment: |namespace: dso202-a3-|name: dso202-a3-') <(kubectl kustomize kustomize/overlays/prod | grep -vE 'instance: tasktracker-|environment: |namespace: dso202-a3-|name: dso202-a3-')
+143,144c143,144
+<   BACKEND_URL: https://tasktracker-dev.localhost:8443
+<   CORS_ORIGIN: https://tasktracker-dev.localhost:8443
+---
+>   BACKEND_URL: https://tasktracker-prod.localhost:8443
+>   CORS_ORIGIN: https://tasktracker-prod.localhost:8443
+154c154
+<   name: app-config-h29cdc7dhk
+---
+>   name: app-config-kk84dbtc8k
+256c256
+<   replicas: 1
+---
+>   replicas: 3
+275c275
+<               name: app-config-h29cdc7dhk
+---
+>               name: app-config-kk84dbtc8k
+280c280
+<               name: app-config-h29cdc7dhk
+---
+>               name: app-config-kk84dbtc8k
+285c285
+<               name: app-config-h29cdc7dhk
+---
+>               name: app-config-kk84dbtc8k
+290c290
+<               name: app-config-h29cdc7dhk
+---
+>               name: app-config-kk84dbtc8k
+295c295
+<               name: app-config-h29cdc7dhk
+---
+>               name: app-config-kk84dbtc8k
+325,326c325,326
+<             cpu: 250m
+<             memory: 128Mi
+---
+>             cpu: 500m
+>             memory: 256Mi
+328,329c328,329
+<             cpu: 50m
+<             memory: 64Mi
+---
+>             cpu: 100m
+>             memory: 128Mi
+359c359
+<   replicas: 1
+---
+>   replicas: 3
+378c378
+<               name: app-config-h29cdc7dhk
+---
+>               name: app-config-kk84dbtc8k
+427c427
+<     whenDeleted: Delete
+---
+>     whenDeleted: Retain
+450c450
+<               name: app-config-h29cdc7dhk
+---
+>               name: app-config-kk84dbtc8k
+488,489c488,489
+<             cpu: 500m
+<             memory: 256Mi
+---
+>             cpu: "1"
+>             memory: 512Mi
+491,492c491,492
+<             cpu: 100m
+<             memory: 128Mi
+---
+>             cpu: 250m
+>             memory: 256Mi
+512c512,536
+<           storage: 1Gi
+---
+>           storage: 5Gi
+> ---
+> apiVersion: policy/v1
+> kind: PodDisruptionBudget
+> metadata:
+>   labels:
+>   name: backend
+> spec:
+>   minAvailable: 2
+>   selector:
+>     matchLabels:
+>       app.kubernetes.io/component: backend
+>       app.kubernetes.io/name: tasktracker
+> ---
+> apiVersion: policy/v1
+> kind: PodDisruptionBudget
+> metadata:
+>   labels:
+>   name: frontend
+> spec:
+>   minAvailable: 2
+>   selector:
+>     matchLabels:
+>       app.kubernetes.io/component: frontend
+>       app.kubernetes.io/name: tasktracker
+525c549
+<   - host: tasktracker-dev.localhost
+---
+>   - host: tasktracker-prod.localhost
+544c568
+<     - tasktracker-dev.localhost
+---
+>     - tasktracker-prod.localhost
+
+$ grep -n -A3 'subjects:' evidence/rendered/kustomize-dev.yaml | sed -n '1,4p'
+141:subjects:
+142-- kind: ServiceAccount
+143-  name: deployer
+144-  namespace: dso202-a3-dev
+
+# Hash suffix: change one literal in the base and the generated name changes
+$ kubectl kustomize kustomize/overlays/dev | grep -m1 "name: app-config-"; sed -i "s/DB_PORT=5432/DB_PORT=5433/" kustomize/base/kustomization.yaml; kubectl kustomize kustomize/overlays/dev | grep -m1 "name: app-config-"; sed -i "s/DB_PORT=5433/DB_PORT=5432/" kustomize/base/kustomization.yaml; kubectl kustomize kustomize/overlays/dev | grep -m1 "name: app-config-"
+  name: app-config-h29cdc7dhk
+  name: app-config-kf5th9bg6c
+  name: app-config-h29cdc7dhk
+

@@ -1,0 +1,69 @@
+$ helm version --short
+v4.3.1+gc0d08d0
+
+$ helm lint ./tasktracker -f environments/dev.yaml; helm lint ./tasktracker -f environments/prod.yaml
+==> Linting ./tasktracker
+[INFO] Chart.yaml: icon is recommended
+
+1 chart(s) linted, 0 chart(s) failed
+==> Linting ./tasktracker
+[INFO] Chart.yaml: icon is recommended
+
+1 chart(s) linted, 0 chart(s) failed
+
+$ for e in dev prod; do echo "$e: $(grep -c "^kind:" ../evidence/rendered/helm-$e.yaml) objects"; done
+dev: 19 objects
+prod: 21 objects
+
+$ grep -n 'DB_HOST\|CORS_ORIGIN\|BACKEND_URL:' ../evidence/rendered/helm-dev.yaml ../evidence/rendered/helm-prod.yaml
+../evidence/rendered/helm-dev.yaml:115:  DB_HOST: tasktracker-dev-db
+../evidence/rendered/helm-dev.yaml:120:  CORS_ORIGIN: "https://tasktracker-helm-dev.localhost:8443"
+../evidence/rendered/helm-dev.yaml:121:  BACKEND_URL: "https://tasktracker-helm-dev.localhost:8443"
+../evidence/rendered/helm-prod.yaml:159:  DB_HOST: tasktracker-prod-db
+../evidence/rendered/helm-prod.yaml:164:  CORS_ORIGIN: "https://tasktracker-helm-prod.localhost:8443"
+../evidence/rendered/helm-prod.yaml:165:  BACKEND_URL: "https://tasktracker-helm-prod.localhost:8443"
+
+$ helm template t ./tasktracker -f environments/prod.yaml --set ingress.publicPort=443 | grep 'BACKEND_URL:'
+  BACKEND_URL: "https://tasktracker-helm-prod.localhost"
+
+$ helm template t ./tasktracker --set frontend.replicas=0
+Error: values don't meet the specifications of the schema(s) in the following chart(s):
+tasktracker:
+- at '/frontend/replicas': minimum: got 0, want 1
+
+
+$ helm template t ./tasktracker --set db.storage.size=5GB
+Error: values don't meet the specifications of the schema(s) in the following chart(s):
+tasktracker:
+- at '/db/storage/size': '5GB' does not match pattern '^[0-9]+(Mi|Gi|Ti)$'
+
+
+$ helm template t ./tasktracker --set ingress.host=Task_Tracker.local
+Error: values don't meet the specifications of the schema(s) in the following chart(s):
+tasktracker:
+- at '/ingress/host': 'Task_Tracker.local' does not match pattern '^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$'
+
+
+$ helm template t ./tasktracker --set images.pullPolicy=Sometimes
+Error: values don't meet the specifications of the schema(s) in the following chart(s):
+tasktracker:
+- at '/images/pullPolicy': value must be one of 'Always', 'IfNotPresent', 'Never'
+
+
+$ helm template t ./tasktracker --set podDisruptionBudget.enabled=true --set backend.replicas=1
+Error: execution error at (tasktracker/templates/pdb.yaml:11:4): podDisruptionBudget.minAvailable (1) must be lower than backend.replicas (1), or no Pod could ever be evicted
+
+Use --debug flag to render out invalid YAML
+
+$ helm template blue ./tasktracker | grep -E '^  name:' | sort -u | head -6
+  name: blue-tasktracker
+  name: blue-tasktracker-backend
+  name: blue-tasktracker-config
+  name: blue-tasktracker-db
+  name: blue-tasktracker-db-credentials
+  name: blue-tasktracker-db-headless
+
+$ for i in 1 2; do helm template t ./tasktracker --show-only templates/secret.yaml | grep DB_PASSWORD | md5sum; done   # no cluster -> no lookup -> a new random password per render
+de1a86e3d93f66c1ad09a5fc406118eb *-
+eff8196201f4897656536dfa30024353 *-
+

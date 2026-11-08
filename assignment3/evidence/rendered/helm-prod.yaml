@@ -1,0 +1,657 @@
+---
+# Source: tasktracker/templates/pdb.yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: tasktracker-prod-frontend
+  labels:
+    helm.sh/chart: tasktracker-0.1.0
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/instance: tasktracker-prod
+    app.kubernetes.io/version: "1.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: tasktracker
+    app.kubernetes.io/component: frontend
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tasktracker
+      app.kubernetes.io/instance: tasktracker-prod
+      app.kubernetes.io/component: frontend
+
+---
+# Source: tasktracker/templates/pdb.yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: tasktracker-prod-backend
+  labels:
+    helm.sh/chart: tasktracker-0.1.0
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/instance: tasktracker-prod
+    app.kubernetes.io/version: "1.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: tasktracker
+    app.kubernetes.io/component: backend
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tasktracker
+      app.kubernetes.io/instance: tasktracker-prod
+      app.kubernetes.io/component: backend
+
+---
+# Source: tasktracker/templates/rbac.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tasktracker-prod-deployer
+  labels:
+    helm.sh/chart: tasktracker-0.1.0
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/instance: tasktracker-prod
+    app.kubernetes.io/version: "1.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: tasktracker
+
+---
+# Source: tasktracker/templates/serviceaccounts.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tasktracker-prod-frontend
+  labels:
+    helm.sh/chart: tasktracker-0.1.0
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/instance: tasktracker-prod
+    app.kubernetes.io/version: "1.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: tasktracker
+    app.kubernetes.io/component: frontend
+automountServiceAccountToken: false
+
+---
+# Source: tasktracker/templates/serviceaccounts.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tasktracker-prod-backend
+  labels:
+    helm.sh/chart: tasktracker-0.1.0
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/instance: tasktracker-prod
+    app.kubernetes.io/version: "1.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: tasktracker
+    app.kubernetes.io/component: backend
+automountServiceAccountToken: false
+
+---
+# Source: tasktracker/templates/serviceaccounts.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tasktracker-prod-db
+  labels:
+    helm.sh/chart: tasktracker-0.1.0
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/instance: tasktracker-prod
+    app.kubernetes.io/version: "1.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: tasktracker
+    app.kubernetes.io/component: db
+automountServiceAccountToken: false
+
+---
+# Source: tasktracker/templates/secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tasktracker-prod-db-credentials
+  labels:
+    helm.sh/chart: tasktracker-0.1.0
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/instance: tasktracker-prod
+    app.kubernetes.io/version: "1.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: tasktracker
+type: Opaque
+data:
+  DB_USER: "dGFza3VzZXI="
+  DB_PASSWORD: <redacted: generated at render time>
+  POSTGRES_USER: "dGFza3VzZXI="
+  POSTGRES_PASSWORD: <redacted: generated at render time>
+
+---
+# Source: tasktracker/templates/tls-secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tasktracker-prod-tls
+  labels:
+    helm.sh/chart: tasktracker-0.1.0
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/instance: tasktracker-prod
+    app.kubernetes.io/version: "1.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: tasktracker
+type: kubernetes.io/tls
+data:
+  tls.crt: <redacted: generated at render time>
+  tls.key: <redacted: generated at render time>
+
+---
+# Source: tasktracker/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tasktracker-prod-config
+  labels:
+    helm.sh/chart: tasktracker-0.1.0
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/instance: tasktracker-prod
+    app.kubernetes.io/version: "1.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: tasktracker
+data:
+  DB_HOST: tasktracker-prod-db
+  DB_PORT: "5432"
+  DB_NAME: "taskdb"
+  POSTGRES_DB: "taskdb"
+  APP_PORT: "8080"
+  CORS_ORIGIN: "https://tasktracker-helm-prod.localhost:8443"
+  BACKEND_URL: "https://tasktracker-helm-prod.localhost:8443"
+
+---
+# Source: tasktracker/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: tasktracker-prod-deployer
+  labels:
+    helm.sh/chart: tasktracker-0.1.0
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/instance: tasktracker-prod
+    app.kubernetes.io/version: "1.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: tasktracker
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["services", "configmaps", "secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["replicasets", "controllerrevisions"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "events", "endpoints"]
+    verbs: ["get", "list", "watch"]
+
+---
+# Source: tasktracker/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tasktracker-prod-deployer
+  labels:
+    helm.sh/chart: tasktracker-0.1.0
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/instance: tasktracker-prod
+    app.kubernetes.io/version: "1.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: tasktracker
+subjects:
+  - kind: ServiceAccount
+    name: tasktracker-prod-deployer
+    namespace: dso202-a3-helm-prod
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: tasktracker-prod-deployer
+
+---
+# Source: tasktracker/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tasktracker-prod-viewers
+  labels:
+    helm.sh/chart: tasktracker-0.1.0
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/instance: tasktracker-prod
+    app.kubernetes.io/version: "1.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: tasktracker
+subjects:
+  - kind: Group
+    name: tasktracker-developers
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+
+---
+# Source: tasktracker/templates/backend.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: tasktracker-prod-backend
+  labels:
+    helm.sh/chart: tasktracker-0.1.0
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/instance: tasktracker-prod
+    app.kubernetes.io/version: "1.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: tasktracker
+    app.kubernetes.io/component: backend
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/instance: tasktracker-prod
+    app.kubernetes.io/component: backend
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+
+---
+# Source: tasktracker/templates/db.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: tasktracker-prod-db-headless
+  labels:
+    helm.sh/chart: tasktracker-0.1.0
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/instance: tasktracker-prod
+    app.kubernetes.io/version: "1.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: tasktracker
+    app.kubernetes.io/component: db
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/instance: tasktracker-prod
+    app.kubernetes.io/component: db
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+
+---
+# Source: tasktracker/templates/db.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: tasktracker-prod-db
+  labels:
+    helm.sh/chart: tasktracker-0.1.0
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/instance: tasktracker-prod
+    app.kubernetes.io/version: "1.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: tasktracker
+    app.kubernetes.io/component: db
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/instance: tasktracker-prod
+    app.kubernetes.io/component: db
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+
+---
+# Source: tasktracker/templates/frontend.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: tasktracker-prod-frontend
+  labels:
+    helm.sh/chart: tasktracker-0.1.0
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/instance: tasktracker-prod
+    app.kubernetes.io/version: "1.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: tasktracker
+    app.kubernetes.io/component: frontend
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/instance: tasktracker-prod
+    app.kubernetes.io/component: frontend
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+
+---
+# Source: tasktracker/templates/backend.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tasktracker-prod-backend
+  labels:
+    helm.sh/chart: tasktracker-0.1.0
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/instance: tasktracker-prod
+    app.kubernetes.io/version: "1.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: tasktracker
+    app.kubernetes.io/component: backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tasktracker
+      app.kubernetes.io/instance: tasktracker-prod
+      app.kubernetes.io/component: backend
+  template:
+    metadata:
+      labels:
+        helm.sh/chart: tasktracker-0.1.0
+        app.kubernetes.io/name: tasktracker
+        app.kubernetes.io/instance: tasktracker-prod
+        app.kubernetes.io/version: "1.1"
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/part-of: tasktracker
+        app.kubernetes.io/component: backend
+      annotations:
+        checksum/config: 29a72f317888561b426f1e4d2f85a6e22908a0839ebc603558988158fd96dce5
+        checksum/secret: 690fc8ebfb66279941599568b65e2a642226b30de86e64b31095dcb4346331a2
+    spec:
+      serviceAccountName: tasktracker-prod-backend
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 100
+        runAsGroup: 101
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: backend
+          image: "dso202-backend:1.1"
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            # Every key of both objects becomes an env var. The backend
+            # ignores the POSTGRES_* keys it does not read.
+            - configMapRef:
+                name: tasktracker-prod-config
+            - secretRef:
+                name: tasktracker-prod-db-credentials
+          startupProbe:
+            tcpSocket: {port: http}
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: {path: /api/status, port: http}
+            periodSeconds: 5
+            failureThreshold: 2
+          livenessProbe:
+            tcpSocket: {port: http}
+            periodSeconds: 10
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ["ALL"]}
+          resources:
+            limits:
+              cpu: 500m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+
+---
+# Source: tasktracker/templates/frontend.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tasktracker-prod-frontend
+  labels:
+    helm.sh/chart: tasktracker-0.1.0
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/instance: tasktracker-prod
+    app.kubernetes.io/version: "1.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: tasktracker
+    app.kubernetes.io/component: frontend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tasktracker
+      app.kubernetes.io/instance: tasktracker-prod
+      app.kubernetes.io/component: frontend
+  template:
+    metadata:
+      labels:
+        helm.sh/chart: tasktracker-0.1.0
+        app.kubernetes.io/name: tasktracker
+        app.kubernetes.io/instance: tasktracker-prod
+        app.kubernetes.io/version: "1.1"
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/part-of: tasktracker
+        app.kubernetes.io/component: frontend
+      annotations:
+        checksum/config: 29a72f317888561b426f1e4d2f85a6e22908a0839ebc603558988158fd96dce5
+    spec:
+      serviceAccountName: tasktracker-prod-frontend
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: frontend
+          image: "dso202-frontend:1.0"
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: BACKEND_URL
+              valueFrom: {configMapKeyRef: {name: tasktracker-prod-config, key: BACKEND_URL}}
+          readinessProbe:
+            httpGet: {path: /, port: http}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /, port: http}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: ["ALL"]}
+          resources:
+            limits:
+              cpu: 200m
+              memory: 64Mi
+            requests:
+              cpu: 50m
+              memory: 32Mi
+
+---
+# Source: tasktracker/templates/db.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: tasktracker-prod-db
+  labels:
+    helm.sh/chart: tasktracker-0.1.0
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/instance: tasktracker-prod
+    app.kubernetes.io/version: "1.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: tasktracker
+    app.kubernetes.io/component: db
+spec:
+  serviceName: tasktracker-prod-db-headless
+  replicas: 1
+  podManagementPolicy: OrderedReady
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tasktracker
+      app.kubernetes.io/instance: tasktracker-prod
+      app.kubernetes.io/component: db
+  updateStrategy:
+    type: RollingUpdate
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  template:
+    metadata:
+      labels:
+        helm.sh/chart: tasktracker-0.1.0
+        app.kubernetes.io/name: tasktracker
+        app.kubernetes.io/instance: tasktracker-prod
+        app.kubernetes.io/version: "1.1"
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/part-of: tasktracker
+        app.kubernetes.io/component: db
+      annotations:
+        # Credentials changing must restart Postgres' Pod to take effect.
+        checksum/secret: f00f60539d830b4cfcbae0fe8f76385a01e2e0129d48d7a191757e20613fa496
+    spec:
+      serviceAccountName: tasktracker-prod-db
+      automountServiceAccountToken: false
+      containers:
+        - name: db
+          image: "dso202-db:1.0"
+          imagePullPolicy: Never
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              valueFrom: {configMapKeyRef: {name: tasktracker-prod-config, key: POSTGRES_DB}}
+            - name: POSTGRES_USER
+              valueFrom: {secretKeyRef: {name: tasktracker-prod-db-credentials, key: POSTGRES_USER}}
+            - name: POSTGRES_PASSWORD
+              valueFrom: {secretKeyRef: {name: tasktracker-prod-db-credentials, key: POSTGRES_PASSWORD}}
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -h 127.0.0.1 -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -h 127.0.0.1"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 6
+          resources:
+            limits:
+              cpu: "1"
+              memory: 512Mi
+            requests:
+              cpu: 250m
+              memory: 256Mi
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          app.kubernetes.io/name: tasktracker
+          app.kubernetes.io/instance: tasktracker-prod
+          app.kubernetes.io/component: db
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi
+
+---
+# Source: tasktracker/templates/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tasktracker-prod
+  labels:
+    helm.sh/chart: tasktracker-0.1.0
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/instance: tasktracker-prod
+    app.kubernetes.io/version: "1.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: tasktracker
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - "tasktracker-helm-prod.localhost"
+      secretName: tasktracker-prod-tls
+  rules:
+    - host: "tasktracker-helm-prod.localhost"
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: tasktracker-prod-backend
+                port: {name: http}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: tasktracker-prod-frontend
+                port: {name: http}
+---
+# Source: tasktracker/templates/tests/test-api.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: tasktracker-prod-test-api
+  labels:
+    helm.sh/chart: tasktracker-0.1.0
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/instance: tasktracker-prod
+    app.kubernetes.io/version: "1.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: tasktracker
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    seccompProfile: {type: RuntimeDefault}
+  containers:
+    - name: test
+      image: busybox:1.37
+      command:
+        - sh
+        - -ec
+        - |
+          wget -qO- http://tasktracker-prod-frontend:8080/ | grep -q '<html'
+          echo "frontend: page served"
+          wget -qO- http://tasktracker-prod-frontend:8080/config.js | grep -F 'https://tasktracker-helm-prod.localhost:8443'
+          wget -qO- http://tasktracker-prod-backend:8080/api/status | tee /dev/stderr | grep -q '"db":"connected"'
+          echo "backend: database connected"
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities: {drop: ["ALL"]}
+

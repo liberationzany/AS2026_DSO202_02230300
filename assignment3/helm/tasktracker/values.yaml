@@ -1,0 +1,75 @@
+# values.yaml - documented defaults: the chart's whole interface.
+# Environment files (../environments/*.yaml) override only what differs.
+
+# --- Images --------------------------------------------------------------
+# Built locally and loaded with "kind load docker-image", so they are never
+# pulled (pullPolicy Never). See assignment1/ and assignment2/app-patch/.
+images:
+  pullPolicy: Never
+  frontend: {repository: dso202-frontend, tag: "1.0"}
+  backend: {repository: dso202-backend, tag: "1.1"}
+  db: {repository: dso202-db, tag: "1.0"}
+
+# --- Frontend (nginx serving the static UI) -----------------------------
+frontend:
+  replicas: 2
+  resources:
+    requests: {cpu: 50m, memory: 32Mi}
+    limits: {cpu: 200m, memory: 64Mi}
+
+# --- Backend (Express API on :8080) -------------------------------------
+backend:
+  replicas: 2
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+    limits: {cpu: 250m, memory: 128Mi}
+
+# --- Database (PostgreSQL StatefulSet, always 1 replica) ----------------
+db:
+  name: taskdb
+  user: taskuser
+  # Empty = generate a random 24-character password on first install and
+  # REUSE it on every upgrade (templates/secret.yaml uses "lookup").
+  # Set it only to pin a known value.
+  password: ""
+  storage:
+    size: 1Gi
+    storageClassName: ""        # "" = the cluster default (kind: standard)
+  # Retain keeps the data PVC when the release is uninstalled or scaled.
+  retainOnDelete: true
+  resources:
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {cpu: 500m, memory: 256Mi}
+
+# --- Ingress (the only entry point; every Service is ClusterIP) ----------
+ingress:
+  className: nginx
+  host: tasktracker.localhost
+  # The port the browser uses to reach the controller. 8443 is the local
+  # proxy (assignment2/scripts/host-proxy.sh); 443 for a real load balancer.
+  # BACKEND_URL and CORS_ORIGIN are DERIVED from host + publicPort, so the
+  # three values can never disagree.
+  publicPort: 8443
+  tls:
+    enabled: true
+    # true: the chart creates a self-signed certificate for the host and
+    # keeps it across upgrades. false: provide secretName yourself
+    # (for example from cert-manager).
+    selfSigned: true
+    secretName: ""              # "" = <release>-tls
+
+# --- RBAC ---------------------------------------------------------------
+rbac:
+  # A namespaced "deployer" ServiceAccount + Role + RoleBinding for a CD
+  # pipeline (Unit II 2.3.8): create/update/patch, never delete, no RBAC.
+  createDeployer: true
+  # Group given the built-in "view" ClusterRole in this namespace only.
+  # "" = no binding.
+  viewerGroup: tasktracker-developers
+
+# --- Availability -------------------------------------------------------
+# PodDisruptionBudgets for frontend and backend. Only meaningful with 2+
+# replicas: with 1 replica and minAvailable 1, no node could ever be drained.
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1

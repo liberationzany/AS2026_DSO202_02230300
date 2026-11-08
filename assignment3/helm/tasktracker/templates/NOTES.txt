@@ -1,0 +1,16 @@
+Task Tracker {{ .Chart.AppVersion }} is deployed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}" (revision {{ .Release.Revision }}).
+
+Open:   {{ include "tasktracker.origin" . }}/
+API:    {{ include "tasktracker.origin" . }}/api/status
+{{- if and .Values.ingress.tls.enabled .Values.ingress.tls.selfSigned }}
+        (self-signed certificate: the browser will warn once; curl needs -k)
+{{- end }}
+
+Check:
+  kubectl get pods,ingress -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+  helm test {{ .Release.Name }} -n {{ .Release.Namespace }}
+
+The database password is stored in Secret {{ include "tasktracker.fullname" . }}-db-credentials.
+{{- if .Values.db.retainOnDelete }}
+The data volume (data-{{ include "tasktracker.fullname" . }}-db-0) is kept after "helm uninstall"; delete the PVC to remove the data.
+{{- end }}

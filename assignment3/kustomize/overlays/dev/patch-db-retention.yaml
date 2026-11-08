@@ -1,0 +1,5 @@
+# Dev only: delete the database PVC with the StatefulSet (the base, like
+# Assignment 2, retains it). Dev data is disposable; prod keeps Retain.
+- op: replace
+  path: /spec/persistentVolumeClaimRetentionPolicy/whenDeleted
+  value: Delete

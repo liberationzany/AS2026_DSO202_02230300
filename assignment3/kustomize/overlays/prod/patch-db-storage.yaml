@@ -1,0 +1,6 @@
+# JSON 6902 patch: a 5Gi database volume in prod (base: 1Gi).
+# volumeClaimTemplates cannot be changed on an existing StatefulSet, so this
+# must be right before the first deployment.
+- op: replace
+  path: /spec/volumeClaimTemplates/0/spec/resources/requests/storage
+  value: 5Gi

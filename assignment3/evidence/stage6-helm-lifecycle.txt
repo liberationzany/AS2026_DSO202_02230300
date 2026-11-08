@@ -1,0 +1,118 @@
+# Revision 1 (installed in stage 5)
+$ echo "password sha: $(kubectl get secret tasktracker-dev-db-credentials -n dso202-a3-helm-dev -o jsonpath='{.data.DB_PASSWORD}' | sha256sum | cut -c1-12)  cert sha: $(kubectl get secret tasktracker-dev-tls -n dso202-a3-helm-dev -o jsonpath='{.data.tls\.crt}' | sha256sum | cut -c1-12)  cert host annotation: $(kubectl get secret tasktracker-dev-tls -n dso202-a3-helm-dev -o jsonpath='{.metadata.annotations.tasktracker\.dso202/certificate-host}')"; kubectl get pods -n dso202-a3-helm-dev -l app.kubernetes.io/component=backend -o custom-columns=BACKEND_POD:.metadata.name --no-headers
+password sha: 6a8e4c5cfdbb  cert sha: 30446a249ae2  cert host annotation: 
+tasktracker-dev-backend-7b9bccd4f6-mwkgl
+
+# Revision 2: chart 0.1.1 (host annotation added to the TLS Secret), same values
+$ helm upgrade tasktracker-dev ./tasktracker -f environments/dev.yaml -n dso202-a3-helm-dev --wait --timeout 5m | grep -E 'REVISION|STATUS'
+STATUS: deployed
+REVISION: 2
+
+$ echo "password sha: $(kubectl get secret tasktracker-dev-db-credentials -n dso202-a3-helm-dev -o jsonpath='{.data.DB_PASSWORD}' | sha256sum | cut -c1-12)  cert sha: $(kubectl get secret tasktracker-dev-tls -n dso202-a3-helm-dev -o jsonpath='{.data.tls\.crt}' | sha256sum | cut -c1-12)  cert host annotation: $(kubectl get secret tasktracker-dev-tls -n dso202-a3-helm-dev -o jsonpath='{.metadata.annotations.tasktracker\.dso202/certificate-host}')"; kubectl get pods -n dso202-a3-helm-dev -l app.kubernetes.io/component=backend -o custom-columns=BACKEND_POD:.metadata.name --no-headers
+password sha: 6a8e4c5cfdbb  cert sha: 10a90c036041  cert host annotation: tasktracker-helm-dev.localhost
+tasktracker-dev-backend-787f4f576-25nzn
+tasktracker-dev-backend-7b9bccd4f6-mwkgl
+
+# Revision 3: the same upgrade again - nothing should change, no Pod should restart
+$ helm upgrade tasktracker-dev ./tasktracker -f environments/dev.yaml -n dso202-a3-helm-dev --wait --timeout 5m | grep -E 'REVISION|STATUS'
+STATUS: deployed
+REVISION: 3
+
+$ echo "password sha: $(kubectl get secret tasktracker-dev-db-credentials -n dso202-a3-helm-dev -o jsonpath='{.data.DB_PASSWORD}' | sha256sum | cut -c1-12)  cert sha: $(kubectl get secret tasktracker-dev-tls -n dso202-a3-helm-dev -o jsonpath='{.data.tls\.crt}' | sha256sum | cut -c1-12)  cert host annotation: $(kubectl get secret tasktracker-dev-tls -n dso202-a3-helm-dev -o jsonpath='{.metadata.annotations.tasktracker\.dso202/certificate-host}')"; kubectl get pods -n dso202-a3-helm-dev -l app.kubernetes.io/component=backend -o custom-columns=BACKEND_POD:.metadata.name --no-headers
+password sha: 6a8e4c5cfdbb  cert sha: 10a90c036041  cert host annotation: tasktracker-helm-dev.localhost
+tasktracker-dev-backend-787f4f576-25nzn
+tasktracker-dev-backend-7b9bccd4f6-mwkgl
+
+# Revision 4: change ingress.host -> new certificate, new BACKEND_URL, checksum rolls the Pods
+$ helm upgrade tasktracker-dev ./tasktracker -f environments/dev.yaml -n dso202-a3-helm-dev --wait --timeout 5m --set ingress.host=tasktracker-helm-dev2.localhost | grep -E 'REVISION|STATUS|Open:'
+STATUS: deployed
+REVISION: 4
+Open:   https://tasktracker-helm-dev2.localhost:8443/
+
+$ echo "password sha: $(kubectl get secret tasktracker-dev-db-credentials -n dso202-a3-helm-dev -o jsonpath='{.data.DB_PASSWORD}' | sha256sum | cut -c1-12)  cert sha: $(kubectl get secret tasktracker-dev-tls -n dso202-a3-helm-dev -o jsonpath='{.data.tls\.crt}' | sha256sum | cut -c1-12)  cert host annotation: $(kubectl get secret tasktracker-dev-tls -n dso202-a3-helm-dev -o jsonpath='{.metadata.annotations.tasktracker\.dso202/certificate-host}')"; kubectl get pods -n dso202-a3-helm-dev -l app.kubernetes.io/component=backend -o custom-columns=BACKEND_POD:.metadata.name --no-headers
+password sha: 6a8e4c5cfdbb  cert sha: 3607f20ef74e  cert host annotation: tasktracker-helm-dev2.localhost
+tasktracker-dev-backend-776fc6d4c-tww6c
+tasktracker-dev-backend-787f4f576-25nzn
+tasktracker-dev-backend-7b9bccd4f6-mwkgl
+
+$ curl -sk -w '  [%{http_code}]\n' https://tasktracker-helm-dev2.localhost:8443/api/status; curl -sk https://tasktracker-helm-dev2.localhost:8443/config.js | grep BACKEND_URL; echo | openssl s_client -connect 127.0.0.1:8443 -servername tasktracker-helm-dev2.localhost 2>/dev/null | openssl x509 -noout -subject
+{"status":"ok","db":"connected"}  [200]
+  BACKEND_URL: "https://tasktracker-helm-dev2.localhost:8443"
+subject=CN=tasktracker-helm-dev2.localhost
+
+$ curl -sk https://tasktracker-helm-dev2.localhost:8443/api/tasks | python -c 'import json,sys; print([t["title"] for t in json.load(sys.stdin)])'   # data and password survived every revision
+['Set up kind cluster', 'Write namespace manifest', 'Wire ConfigMap and Secret', 'dev task via helm']
+
+# Rollback to revision 3
+$ helm rollback tasktracker-dev 3 -n dso202-a3-helm-dev --wait --timeout 5m
+Rollback was a success! Happy Helming!
+
+$ echo "password sha: $(kubectl get secret tasktracker-dev-db-credentials -n dso202-a3-helm-dev -o jsonpath='{.data.DB_PASSWORD}' | sha256sum | cut -c1-12)  cert sha: $(kubectl get secret tasktracker-dev-tls -n dso202-a3-helm-dev -o jsonpath='{.data.tls\.crt}' | sha256sum | cut -c1-12)  cert host annotation: $(kubectl get secret tasktracker-dev-tls -n dso202-a3-helm-dev -o jsonpath='{.metadata.annotations.tasktracker\.dso202/certificate-host}')"; kubectl get pods -n dso202-a3-helm-dev -l app.kubernetes.io/component=backend -o custom-columns=BACKEND_POD:.metadata.name --no-headers
+password sha: 6a8e4c5cfdbb  cert sha: 10a90c036041  cert host annotation: tasktracker-helm-dev.localhost
+tasktracker-dev-backend-776fc6d4c-tww6c
+tasktracker-dev-backend-787f4f576-25nzn
+tasktracker-dev-backend-787f4f576-6t2vt
+tasktracker-dev-backend-7b9bccd4f6-mwkgl
+
+$ curl -sk -w '  [%{http_code}]\n' https://tasktracker-helm-dev.localhost:8443/api/status; curl -sk -o /dev/null -w 'old host dev2 -> %{http_code}\n' https://tasktracker-helm-dev2.localhost:8443/api/status
+{"status":"ok","db":"connected"}  [200]
+old host dev2 -> 404
+
+$ helm history tasktracker-dev -n dso202-a3-helm-dev
+REVISION	UPDATED                 	STATUS    	CHART            	APP VERSION	DESCRIPTION     
+1       	Sun Nov  8 14:21:27 2026	superseded	tasktracker-0.1.0	1.1        	Install complete
+2       	Sun Nov  8 14:22:50 2026	superseded	tasktracker-0.1.1	1.1        	Upgrade complete
+3       	Sun Nov  8 14:22:58 2026	superseded	tasktracker-0.1.1	1.1        	Upgrade complete
+4       	Sun Nov  8 14:23:00 2026	superseded	tasktracker-0.1.1	1.1        	Upgrade complete
+5       	Sun Nov  8 14:23:15 2026	deployed  	tasktracker-0.1.1	1.1        	Rollback to 3   
+
+$ helm get values tasktracker-dev -n dso202-a3-helm-dev --revision 4; helm get values tasktracker-dev -n dso202-a3-helm-dev
+USER-SUPPLIED VALUES:
+backend:
+  replicas: 1
+db:
+  retainOnDelete: false
+frontend:
+  replicas: 1
+ingress:
+  host: tasktracker-helm-dev2.localhost
+USER-SUPPLIED VALUES:
+backend:
+  replicas: 1
+db:
+  retainOnDelete: false
+frontend:
+  replicas: 1
+ingress:
+  host: tasktracker-helm-dev.localhost
+
+$ kubectl get secrets -n dso202-a3-helm-dev -l owner=helm -o custom-columns=RELEASE_RECORD:.metadata.name,STATUS:.metadata.labels.status
+RELEASE_RECORD                          STATUS
+sh.helm.release.v1.tasktracker-dev.v1   superseded
+sh.helm.release.v1.tasktracker-dev.v2   superseded
+sh.helm.release.v1.tasktracker-dev.v3   superseded
+sh.helm.release.v1.tasktracker-dev.v4   superseded
+sh.helm.release.v1.tasktracker-dev.v5   deployed
+
+# Why old backend Pods lingered in the listings above: how long does a backend Pod take to stop?
+$ kubectl get pods -n dso202-a3-helm-dev -l app.kubernetes.io/component=backend
+NAME                                      READY   STATUS        RESTARTS   AGE
+tasktracker-dev-backend-776fc6d4c-tww6c   1/1     Terminating   0          38s
+tasktracker-dev-backend-787f4f576-6t2vt   1/1     Running       0          23s
+
+$ kubectl exec tasktracker-dev-backend-776fc6d4c-tww6c -n dso202-a3-helm-dev -- sh -c 'cat /proc/1/cmdline | tr "\0" " "; echo'
+node src/server.js 
+
+$ s=$(date +%s); kubectl delete pod tasktracker-dev-backend-776fc6d4c-tww6c -n dso202-a3-helm-dev >/dev/null; echo "pod deleted after $(( $(date +%s) - s )) s"; kubectl get pod -n dso202-a3-helm-prod >/dev/null
+pod deleted after 11 s
+
+$ kubectl get pods -n dso202-a3-helm-dev -l app.kubernetes.io/component=frontend -o name | head -1 | xargs -I{} sh -c 's=$(date +%s); kubectl delete {} -n dso202-a3-helm-dev >/dev/null; echo "frontend (nginx) pod deleted after $(( $(date +%s) - s )) s"'
+frontend (nginx) pod deleted after 0 s
+
+# (the measurement above hit a Pod that was already Terminating; repeated on a Running one)
+$ kubectl get pod tasktracker-dev-backend-787f4f576-6t2vt -n dso202-a3-helm-dev -o jsonpath='{.metadata.name} deletionTimestamp={.metadata.deletionTimestamp}'; echo
+tasktracker-dev-backend-787f4f576-6t2vt deletionTimestamp=
+
+$ s=$(date +%s); kubectl delete pod tasktracker-dev-backend-787f4f576-6t2vt -n dso202-a3-helm-dev >/dev/null; echo "backend (node as PID 1) pod deleted after $(( $(date +%s) - s )) s; terminationGracePeriodSeconds=30"
+backend (node as PID 1) pod deleted after 33 s; terminationGracePeriodSeconds=30
+

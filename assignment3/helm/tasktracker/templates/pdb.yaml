@@ -1,0 +1,27 @@
+{{- /*
+pdb.yaml - PodDisruptionBudgets for the two stateless tiers, when enabled.
+fail: refuses to render a budget that could never be satisfied during a
+drain (minAvailable >= replicas), instead of producing one that silently
+blocks every node drain.
+*/}}
+{{- if .Values.podDisruptionBudget.enabled }}
+{{- range $component := list "frontend" "backend" }}
+{{- $replicas := int (index $.Values $component "replicas") }}
+{{- if ge (int $.Values.podDisruptionBudget.minAvailable) $replicas }}
+{{- fail (printf "podDisruptionBudget.minAvailable (%d) must be lower than %s.replicas (%d), or no Pod could ever be evicted" (int $.Values.podDisruptionBudget.minAvailable) $component $replicas) }}
+{{- end }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "tasktracker.fullname" $ }}-{{ $component }}
+  labels:
+    {{- include "tasktracker.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+spec:
+  minAvailable: {{ $.Values.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "tasktracker.selectorLabels" (dict "ctx" $ "component" $component) | nindent 6 }}
+{{- end }}
+{{- end }}

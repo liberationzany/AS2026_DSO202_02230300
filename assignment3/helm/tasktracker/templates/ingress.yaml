@@ -1,0 +1,36 @@
+{{- /*
+ingress.yaml - the single entry point: /api -> backend, / -> frontend
+(Unit II 2.2). No rewrite-target annotation: the backend expects the full
+/api/... path.
+*/}}
+{{- $fullname := include "tasktracker.fullname" . -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $fullname }}
+  labels:
+    {{- include "tasktracker.labels" . | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host | quote }}
+      secretName: {{ include "tasktracker.tlsSecretName" . }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $fullname }}-backend
+                port: {name: http}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $fullname }}-frontend
+                port: {name: http}

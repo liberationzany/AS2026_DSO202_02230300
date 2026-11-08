@@ -1,0 +1,6 @@
+# The dev environment's namespace. Part of the overlay (not the base), so
+# each environment owns, and can delete, its own namespace.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dso202-a3-dev

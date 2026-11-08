@@ -1,0 +1,20 @@
+# environments/prod.yaml - overrides for the production-shaped release.
+frontend:
+  replicas: 3
+backend:
+  replicas: 3
+  resources:
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {cpu: 500m, memory: 256Mi}
+db:
+  storage:
+    size: 5Gi              # volumeClaimTemplates are immutable: decide before install
+  retainOnDelete: true
+  resources:
+    requests: {cpu: 250m, memory: 256Mi}
+    limits: {cpu: "1", memory: 512Mi}
+ingress:
+  host: tasktracker-helm-prod.localhost
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2          # with 3 replicas, a drain evicts one Pod at a time

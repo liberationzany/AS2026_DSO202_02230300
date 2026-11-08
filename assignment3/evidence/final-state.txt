@@ -1,0 +1,48 @@
+$ helm list -A | grep -E "NAME|tasktracker"
+NAME            	NAMESPACE          	REVISION	UPDATED                              	STATUS  	CHART            	APP VERSION
+tasktracker-dev 	dso202-a3-helm-dev 	5       	2026-11-08 14:23:15.898643 +0600 +06 	deployed	tasktracker-0.1.1	1.1        
+tasktracker-prod	dso202-a3-helm-prod	1       	2026-11-08 14:21:44.9530873 +0600 +06	deployed	tasktracker-0.1.0	1.1        
+
+$ kubectl get ingress -A
+NAMESPACE             NAME               CLASS   HOSTS                             ADDRESS     PORTS     AGE
+dso202-a3-dev         tasktracker        nginx   tasktracker-dev.localhost         localhost   80, 443   4m50s
+dso202-a3-helm-dev    tasktracker-dev    nginx   tasktracker-helm-dev.localhost    localhost   80, 443   3m26s
+dso202-a3-helm-prod   tasktracker-prod   nginx   tasktracker-helm-prod.localhost   localhost   80, 443   3m5s
+dso202-a3-prod        tasktracker        nginx   tasktracker-prod.localhost        localhost   80, 443   4m48s
+dso202-assignment-2   tasktracker        nginx   tasktracker.localhost             localhost   80, 443   11m
+
+$ for h in tasktracker tasktracker-dev tasktracker-prod tasktracker-helm-dev tasktracker-helm-prod; do printf "%-24s " $h; curl -sk -w " [%{http_code}]\n" https://$h.localhost:8443/api/status; done
+tasktracker              {"status":"ok","db":"connected"} [200]
+tasktracker-dev          {"status":"ok","db":"connected"} [200]
+tasktracker-prod         {"status":"ok","db":"connected"} [200]
+tasktracker-helm-dev     {"status":"ok","db":"connected"} [200]
+tasktracker-helm-prod    {"status":"ok","db":"connected"} [200]
+
+$ kubectl get pods -n dso202-a3-dev; kubectl get pods -n dso202-a3-prod; kubectl get pods -n dso202-a3-helm-dev; kubectl get pods -n dso202-a3-helm-prod
+NAME                       READY   STATUS    RESTARTS   AGE
+backend-dd9f4fb69-crlmr    1/1     Running   0          3m51s
+db-0                       1/1     Running   0          3m50s
+frontend-56dddf6d5-k4kx4   1/1     Running   0          3m51s
+NAME                        READY   STATUS    RESTARTS   AGE
+backend-5c487b4469-c5995    1/1     Running   0          4m50s
+backend-5c487b4469-htp6v    1/1     Running   0          3m45s
+backend-5c487b4469-vszgq    1/1     Running   0          4m50s
+db-0                        1/1     Running   0          4m50s
+frontend-55996c9cf4-2tvxc   1/1     Running   0          4m50s
+frontend-55996c9cf4-49hcc   1/1     Running   0          4m50s
+frontend-55996c9cf4-tgphh   1/1     Running   0          4m50s
+NAME                                        READY   STATUS      RESTARTS   AGE
+tasktracker-dev-backend-787f4f576-8t8nb     1/1     Running     0          44s
+tasktracker-dev-db-0                        1/1     Running     0          119s
+tasktracker-dev-frontend-76955d7567-z9p7b   1/1     Running     0          55s
+tasktracker-dev-test-api                    0/1     Completed   0          2m49s
+NAME                                         READY   STATUS      RESTARTS   AGE
+tasktracker-prod-backend-84c9bc8897-ndwxf    1/1     Running     0          3m7s
+tasktracker-prod-backend-84c9bc8897-rxhrs    1/1     Running     0          3m7s
+tasktracker-prod-backend-84c9bc8897-s6fj8    1/1     Running     0          3m7s
+tasktracker-prod-db-0                        1/1     Running     0          3m7s
+tasktracker-prod-frontend-668c65df7f-2sggl   1/1     Running     0          3m7s
+tasktracker-prod-frontend-668c65df7f-q4cbl   1/1     Running     0          3m7s
+tasktracker-prod-frontend-668c65df7f-rlnmw   1/1     Running     0          3m7s
+tasktracker-prod-test-api                    0/1     Completed   0          2m47s
+

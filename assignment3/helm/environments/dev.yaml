@@ -1,0 +1,11 @@
+# environments/dev.yaml - overrides for the development release.
+# Kept outside the chart: the chart is the reusable package, these files are
+# deployment decisions.
+frontend:
+  replicas: 1
+backend:
+  replicas: 1
+db:
+  retainOnDelete: false   # dev data is disposable: delete the PVC with the release
+ingress:
+  host: tasktracker-helm-dev.localhost

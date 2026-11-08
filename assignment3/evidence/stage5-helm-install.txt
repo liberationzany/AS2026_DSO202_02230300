@@ -1,0 +1,118 @@
+$ helm upgrade --install tasktracker-dev ./tasktracker -f environments/dev.yaml -n dso202-a3-helm-dev --create-namespace --wait --timeout 10m
+Release "tasktracker-dev" does not exist. Installing it now.
+NAME: tasktracker-dev
+LAST DEPLOYED: Sun Nov  8 14:21:27 2026
+NAMESPACE: dso202-a3-helm-dev
+STATUS: deployed
+REVISION: 1
+DESCRIPTION: Install complete
+NOTES:
+Task Tracker 1.1 is deployed as release "tasktracker-dev" in namespace "dso202-a3-helm-dev" (revision 1).
+
+Open:   https://tasktracker-helm-dev.localhost:8443/
+API:    https://tasktracker-helm-dev.localhost:8443/api/status
+        (self-signed certificate: the browser will warn once; curl needs -k)
+
+Check:
+  kubectl get pods,ingress -n dso202-a3-helm-dev -l app.kubernetes.io/instance=tasktracker-dev
+  helm test tasktracker-dev -n dso202-a3-helm-dev
+
+The database password is stored in Secret tasktracker-dev-db-credentials.
+
+$ helm upgrade --install tasktracker-prod ./tasktracker -f environments/prod.yaml -n dso202-a3-helm-prod --create-namespace --wait --timeout 10m
+Release "tasktracker-prod" does not exist. Installing it now.
+NAME: tasktracker-prod
+LAST DEPLOYED: Sun Nov  8 14:21:44 2026
+NAMESPACE: dso202-a3-helm-prod
+STATUS: deployed
+REVISION: 1
+DESCRIPTION: Install complete
+NOTES:
+Task Tracker 1.1 is deployed as release "tasktracker-prod" in namespace "dso202-a3-helm-prod" (revision 1).
+
+Open:   https://tasktracker-helm-prod.localhost:8443/
+API:    https://tasktracker-helm-prod.localhost:8443/api/status
+        (self-signed certificate: the browser will warn once; curl needs -k)
+
+Check:
+  kubectl get pods,ingress -n dso202-a3-helm-prod -l app.kubernetes.io/instance=tasktracker-prod
+  helm test tasktracker-prod -n dso202-a3-helm-prod
+
+The database password is stored in Secret tasktracker-prod-db-credentials.
+The data volume (data-tasktracker-prod-db-0) is kept after "helm uninstall"; delete the PVC to remove the data.
+
+$ helm list -A | grep -E "NAME|tasktracker"
+NAME            	NAMESPACE          	REVISION	UPDATED                              	STATUS  	CHART            	APP VERSION
+tasktracker-dev 	dso202-a3-helm-dev 	1       	2026-11-08 14:21:27.7528809 +0600 +06	deployed	tasktracker-0.1.0	1.1        
+tasktracker-prod	dso202-a3-helm-prod	1       	2026-11-08 14:21:44.9530873 +0600 +06	deployed	tasktracker-0.1.0	1.1        
+
+$ helm test tasktracker-dev -n dso202-a3-helm-dev; kubectl logs tasktracker-dev-test-api -n dso202-a3-helm-dev
+NAME: tasktracker-dev
+LAST DEPLOYED: Sun Nov  8 14:21:27 2026
+NAMESPACE: dso202-a3-helm-dev
+STATUS: deployed
+REVISION: 1
+DESCRIPTION: Install complete
+TEST SUITE:     tasktracker-dev-test-api
+Last Started:   Sun Nov  8 14:22:02 2026
+Last Completed: Sun Nov  8 14:22:04 2026
+Phase:          Succeeded
+frontend: page served
+  BACKEND_URL: "https://tasktracker-helm-dev.localhost:8443"
+backend: database connected
+{"status":"ok","db":"connected"}
+$ helm test tasktracker-prod -n dso202-a3-helm-prod; kubectl logs tasktracker-prod-test-api -n dso202-a3-helm-prod
+NAME: tasktracker-prod
+LAST DEPLOYED: Sun Nov  8 14:21:44 2026
+NAMESPACE: dso202-a3-helm-prod
+STATUS: deployed
+REVISION: 1
+DESCRIPTION: Install complete
+TEST SUITE:     tasktracker-prod-test-api
+Last Started:   Sun Nov  8 14:22:04 2026
+Last Completed: Sun Nov  8 14:22:06 2026
+Phase:          Succeeded
+frontend: page served
+  BACKEND_URL: "https://tasktracker-helm-prod.localhost:8443"
+backend: database connected
+{"status":"ok","db":"connected"}
+$ kubectl get pods,pvc,pdb,ingress -n dso202-a3-helm-prod
+NAME                                             READY   STATUS      RESTARTS   AGE
+pod/tasktracker-prod-backend-84c9bc8897-ndwxf    1/1     Running     0          22s
+pod/tasktracker-prod-backend-84c9bc8897-rxhrs    1/1     Running     0          22s
+pod/tasktracker-prod-backend-84c9bc8897-s6fj8    1/1     Running     0          22s
+pod/tasktracker-prod-db-0                        1/1     Running     0          22s
+pod/tasktracker-prod-frontend-668c65df7f-2sggl   1/1     Running     0          22s
+pod/tasktracker-prod-frontend-668c65df7f-q4cbl   1/1     Running     0          22s
+pod/tasktracker-prod-frontend-668c65df7f-rlnmw   1/1     Running     0          22s
+pod/tasktracker-prod-test-api                    0/1     Completed   0          2s
+
+NAME                                               STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+persistentvolumeclaim/data-tasktracker-prod-db-0   Bound    pvc-bc36c469-7d4c-4e93-b2fe-eb4b5b1cf354   5Gi        RWO            standard       <unset>                 22s
+
+NAME                                                   MIN AVAILABLE   MAX UNAVAILABLE   ALLOWED DISRUPTIONS   AGE
+poddisruptionbudget.policy/tasktracker-prod-backend    2               N/A               1                     22s
+poddisruptionbudget.policy/tasktracker-prod-frontend   2               N/A               1                     22s
+
+NAME                                         CLASS   HOSTS                             ADDRESS   PORTS     AGE
+ingress.networking.k8s.io/tasktracker-prod   nginx   tasktracker-helm-prod.localhost             80, 443   22s
+
+$ curl -sk -w '  [%{http_code}]\n' https://tasktracker-helm-dev.localhost:8443/api/status; echo | openssl s_client -connect 127.0.0.1:8443 -servername tasktracker-helm-dev.localhost 2>/dev/null | openssl x509 -noout -subject -enddate
+{"status":"ok","db":"connected"}  [200]
+subject=CN=tasktracker-helm-dev.localhost
+notAfter=Nov  8 08:21:27 2027 GMT
+
+$ curl -sk -X POST -H 'Content-Type: application/json' -d '{"title":"dev task via helm"}' https://tasktracker-helm-dev.localhost:8443/api/tasks; echo
+{"id":4,"title":"dev task via helm","description":null,"status":"pending","created_at":"2026-11-08T08:22:16.917Z"}
+
+$ curl -sk -w '  [%{http_code}]\n' https://tasktracker-helm-prod.localhost:8443/api/status; echo | openssl s_client -connect 127.0.0.1:8443 -servername tasktracker-helm-prod.localhost 2>/dev/null | openssl x509 -noout -subject -enddate
+{"status":"ok","db":"connected"}  [200]
+subject=CN=tasktracker-helm-prod.localhost
+notAfter=Nov  8 08:21:44 2027 GMT
+
+$ curl -sk -X POST -H 'Content-Type: application/json' -d '{"title":"prod task via helm"}' https://tasktracker-helm-prod.localhost:8443/api/tasks; echo
+{"id":4,"title":"prod task via helm","description":null,"status":"pending","created_at":"2026-11-08T08:22:19.509Z"}
+
+$ kubectl get secret tasktracker-prod-db-credentials -n dso202-a3-helm-prod -o jsonpath='{.data.DB_PASSWORD}' | base64 -d | wc -c | sed 's/^/generated DB password length: /'
+generated DB password length: 24
+

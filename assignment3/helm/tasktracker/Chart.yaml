@@ -1,0 +1,14 @@
+# Chart.yaml - the Task Tracker (Assignment 2) packaged as one Helm chart.
+apiVersion: v2                 # Helm 3+ chart format
+name: tasktracker
+description: >-
+  Three-tier Task Tracker (nginx frontend, Node/Express backend, PostgreSQL
+  StatefulSet) behind an ingress-nginx Ingress, with per-workload
+  ServiceAccounts and a least-privilege deployer Role (DSO202 Assignment 3).
+type: application
+# version: the CHART's own version, bumped on any template/values change.
+version: 0.1.1
+# appVersion: the application release the chart deploys by default
+# (backend 1.1 = Assignment 1's 1.0 plus the pool error fix from Assignment 2).
+appVersion: "1.1"
+keywords: [dso202, tasktracker, statefulset, ingress, rbac]

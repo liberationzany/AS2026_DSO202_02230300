@@ -1,0 +1,40 @@
+{{- /*
+tests/test-api.yaml - run by "helm test". Passes only if the whole chain
+works from inside the cluster:
+  1. the frontend Service serves the page;
+  2. config.js carries the derived BACKEND_URL;
+  3. the backend reports {"db":"connected"}, i.e. backend -> db works.
+The hook-delete-policy removes the previous test Pod before the next run.
+*/}}
+{{- $fullname := include "tasktracker.fullname" . -}}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ $fullname }}-test-api
+  labels:
+    {{- include "tasktracker.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    seccompProfile: {type: RuntimeDefault}
+  containers:
+    - name: test
+      image: busybox:1.37
+      command:
+        - sh
+        - -ec
+        - |
+          wget -qO- http://{{ $fullname }}-frontend:8080/ | grep -q '<html'
+          echo "frontend: page served"
+          wget -qO- http://{{ $fullname }}-frontend:8080/config.js | grep -F '{{ include "tasktracker.origin" . }}'
+          wget -qO- http://{{ $fullname }}-backend:8080/api/status | tee /dev/stderr | grep -q '"db":"connected"'
+          echo "backend: database connected"
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities: {drop: ["ALL"]}

@@ -1,0 +1,17 @@
+# base/rbac-viewers.yaml - from assignment2/manifests/13-rbac-viewers.yaml.
+# metadata.namespace removed: each overlay sets it with `namespace:`.
+# Full design notes are in the Assignment 2 file's header.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tasktracker-developers-view
+  labels:
+    app.kubernetes.io/part-of: tasktracker
+subjects:
+  - kind: Group
+    name: tasktracker-developers
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view

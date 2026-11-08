@@ -1,0 +1,34 @@
+# base/ingress.yaml - from assignment2/manifests/11-ingress.yaml.
+# metadata.namespace removed: each overlay sets it with `namespace:`.
+# Full design notes are in the Assignment 2 file's header.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tasktracker
+  labels:
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/part-of: tasktracker
+spec:
+  ingressClassName: nginx           # not the deprecated kubernetes.io/ingress.class annotation
+  tls:
+    - hosts:
+        - tasktracker.localhost
+      secretName: tasktracker-tls   # kubernetes.io/tls Secret, created by script
+  rules:
+    - host: tasktracker.localhost
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: backend-svc
+                port:
+                  name: http
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-svc
+                port:
+                  name: http

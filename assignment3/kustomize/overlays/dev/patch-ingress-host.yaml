@@ -1,0 +1,9 @@
+# JSON 6902 patch: replace the base's host in the TLS entry and the rule.
+# "replace" fails loudly if the path does not exist, so a change in the
+# base's Ingress layout breaks the build instead of silently doing nothing.
+- op: replace
+  path: /spec/tls/0/hosts/0
+  value: tasktracker-dev.localhost
+- op: replace
+  path: /spec/rules/0/host
+  value: tasktracker-dev.localhost

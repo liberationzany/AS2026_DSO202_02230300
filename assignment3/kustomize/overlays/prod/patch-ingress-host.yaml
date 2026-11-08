@@ -1,0 +1,7 @@
+# JSON 6902 patch: the prod host, in the TLS entry and the rule.
+- op: replace
+  path: /spec/tls/0/hosts/0
+  value: tasktracker-prod.localhost
+- op: replace
+  path: /spec/rules/0/host
+  value: tasktracker-prod.localhost
