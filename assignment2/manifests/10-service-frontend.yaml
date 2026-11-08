@@ -1,0 +1,25 @@
+# =============================================================================
+# File        : manifests/10-service-frontend.yaml
+# Applied by  : deployer ServiceAccount
+#
+# ClusterIP instead of Assignment 1's NodePort 30081. No tier of the app is
+# exposed on a node port any more; the Ingress is the single entry point.
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-svc
+  namespace: dso202-assignment-2
+  labels:
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/component: frontend
+    app.kubernetes.io/part-of: tasktracker
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/component: frontend
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

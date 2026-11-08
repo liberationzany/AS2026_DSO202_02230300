@@ -1,0 +1,27 @@
+# =============================================================================
+# File        : manifests/13-rbac-viewers.yaml
+# Applied by  : cluster admin (bootstrap)
+#
+# Unit II 2.3.6: "Prefer binding a reusable, well-tested ClusterRole ...
+# inside a namespace using a RoleBinding." The built-in "view" ClusterRole
+# (read everything except Secrets) is granted to the group
+# tasktracker-developers in this namespace only. A RoleBinding scopes even a
+# ClusterRole to its own namespace.
+# The group comes from the O= field of a user's client certificate (see
+# practicals/csr-user-context), so new developers need no RBAC change.
+# =============================================================================
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tasktracker-developers-view
+  namespace: dso202-assignment-2
+  labels:
+    app.kubernetes.io/part-of: tasktracker
+subjects:
+  - kind: Group
+    name: tasktracker-developers
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view

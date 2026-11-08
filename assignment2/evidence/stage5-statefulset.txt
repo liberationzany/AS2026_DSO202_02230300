@@ -1,0 +1,87 @@
+$ kubectl get pod db-0 -n dso202-assignment-2 -o jsonpath='{.spec.hostname}.{.spec.subdomain}'; echo
+db-0.db-headless
+
+$ kubectl run dnscheck -n dso202-assignment-2 --rm -i --restart=Never --image=busybox:1.37 --overrides='{"spec":{"automountServiceAccountToken":false}}' -- sh -c 'nslookup db-0.db-headless.dso202-assignment-2.svc.cluster.local; nslookup db-svc.dso202-assignment-2.svc.cluster.local' 2>&1 | grep -E 'Name|Address' 
+Address:	10.96.0.10:53
+Name:	db-0.db-headless.dso202-assignment-2.svc.cluster.local
+Address: 10.244.1.17
+Address:	10.96.0.10:53
+Name:	db-svc.dso202-assignment-2.svc.cluster.local
+Address: 10.96.150.103
+Address:	10.96.0.10:53
+Name:	db-0.db-headless.dso202-assignment-2.svc.cluster.local
+Address: 10.244.1.17
+Address:	10.96.0.10:53
+Name:	db-svc.dso202-assignment-2.svc.cluster.local
+Address: 10.96.150.103
+
+$ kubectl get endpointslices -n dso202-assignment-2 -l kubernetes.io/service-name=db-headless -o custom-columns=NAME:.metadata.name,ADDR:.endpoints[*].addresses,HOSTNAME:.endpoints[*].hostname
+NAME                ADDR            HOSTNAME
+db-headless-btgmw   [10.244.1.17]   db-0
+
+$ kubectl exec db-0 -n dso202-assignment-2 -- sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "select id, title, status, created_at from tasks order by id"'
+ id |           title           |   status    |          created_at           
+----+---------------------------+-------------+-------------------------------
+  1 | Set up kind cluster       | done        | 2026-11-08 07:52:49.761951+00
+  2 | Write namespace manifest  | in_progress | 2026-11-08 07:52:49.761951+00
+  3 | Wire ConfigMap and Secret | pending     | 2026-11-08 07:52:49.761951+00
+(3 rows)
+
+
+$ kubectl exec db-0 -n dso202-assignment-2 -- sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "insert into tasks(title, status) values ('\''written before db-0 was deleted'\'', '\''pending'\'') returning id, title"'
+ id |              title              
+----+---------------------------------
+  5 | written before db-0 was deleted
+(1 row)
+
+INSERT 0 1
+
+$ kubectl get pod db-0 -n dso202-assignment-2 -o jsonpath='{.metadata.uid}  {.spec.nodeName}'; echo
+ff12092e-b65d-49d6-b4c0-58f6d919610d  worker-node-2
+
+$ kubectl delete pod db-0 -n dso202-assignment-2
+pod "db-0" deleted from dso202-assignment-2 namespace
+
+$ kubectl wait -n dso202-assignment-2 --for=condition=Ready pod/db-0 --timeout=120s; kubectl get pod db-0 -n dso202-assignment-2 -o jsonpath='{.metadata.uid}  {.spec.nodeName}'; echo
+pod/db-0 condition met
+1536a69f-f7f5-48e1-8fac-63b34834a6fc  worker-node-2
+
+$ kubectl exec db-0 -n dso202-assignment-2 -- sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "select id, title, status from tasks order by id"'
+ id |              title              |   status    
+----+---------------------------------+-------------
+  1 | Set up kind cluster             | done
+  2 | Write namespace manifest        | in_progress
+  3 | Wire ConfigMap and Secret       | pending
+  5 | written before db-0 was deleted | pending
+(4 rows)
+
+
+$ kubectl logs db-0 -n dso202-assignment-2 | grep -i 'skipping initialization\|ready to accept' | head -3
+PostgreSQL Database directory appears to contain a database; Skipping initialization
+2026-11-08 07:53:33.566 UTC [1] LOG:  database system is ready to accept connections
+
+$ kubectl get pvc -n dso202-assignment-2
+NAME        STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+data-db-0   Bound    pvc-b90e07ae-f13c-4210-8d4b-bb37d6c65629   1Gi        RWO            standard       <unset>                 52s
+
+# persistentVolumeClaimRetentionPolicy whenDeleted=Retain: delete the whole StatefulSet, then re-apply it
+$ kubectl delete statefulset db -n dso202-assignment-2
+statefulset.apps "db" deleted from dso202-assignment-2 namespace
+
+$ kubectl get pods,pvc -n dso202-assignment-2 -l app.kubernetes.io/component=database
+NAME       READY   STATUS        RESTARTS   AGE
+pod/db-0   1/1     Terminating   0          2s
+
+NAME                              STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+persistentvolumeclaim/data-db-0   Bound    pvc-b90e07ae-f13c-4210-8d4b-bb37d6c65629   1Gi        RWO            standard       <unset>                 52s
+
+$ kubectl --as=system:serviceaccount:dso202-assignment-2:deployer apply -f manifests/05-statefulset-db.yaml && kubectl -n dso202-assignment-2 rollout status statefulset/db --timeout=120s
+statefulset.apps/db created
+Waiting for 1 pods to be ready...
+Waiting for 1 pods to be ready...
+partitioned roll out complete: 1 new pods have been updated...
+
+$ kubectl exec db-0 -n dso202-assignment-2 -- sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tc "select count(*) from tasks"'
+     4
+
+

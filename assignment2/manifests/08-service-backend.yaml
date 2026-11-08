@@ -1,0 +1,28 @@
+# =============================================================================
+# File        : manifests/08-service-backend.yaml
+# Applied by  : deployer ServiceAccount
+#
+# Back to ClusterIP, as the contract table (Image Build Guide 4.3) specifies.
+# Assignment 1 had to make this a NodePort (30082), because the browser calls
+# BACKEND_URL directly and nothing outside the cluster could reach a
+# ClusterIP. Now the only way in is the Ingress (11-ingress.yaml), which
+# forwards /api/* to this Service from inside the cluster.
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-svc
+  namespace: dso202-assignment-2
+  labels:
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: tasktracker
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/component: backend
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

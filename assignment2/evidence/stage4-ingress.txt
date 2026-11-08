@@ -1,0 +1,267 @@
+# ===== FIRST ATTEMPT: host tasktracker.localtest.me (failed over HTTPS; diagnosis below) =====
+
+$ scripts/make-tls-secret.sh dso202-assignment-2 tasktracker.localtest.me 2>&1 | grep -v "^\.\|^+\|^-\|^\*"
+secret/tasktracker-tls created
+subject=CN=tasktracker.localtest.me, O=dso202
+X509v3 Subject Alternative Name: 
+    DNS:tasktracker.localtest.me
+notAfter=Dec  8 08:03:46 2026 GMT
+
+$ kubectl get secret tasktracker-tls -n dso202-assignment-2 -o jsonpath='{.type} keys:{range .data}{end}'; kubectl get secret tasktracker-tls -n dso202-assignment-2 -o go-template='{{range $k,$v := .data}} {{$k}}{{end}}'; echo
+kubernetes.io/tls keys: tls.crt tls.key
+
+$ git status --short . | grep -i "tls\|key" || echo "no key or certificate files in the working tree"
+no key or certificate files in the working tree
+
+$ scripts/host-proxy.sh
+ingress controller runs on worker-node-2 (172.20.0.2)
+localhost:8443 -> 172.20.0.2:443  (dso202-ingress-proxy-8443)
+localhost:8081 -> 172.20.0.2:80  (dso202-ingress-proxy-8081)
+
+$ kubectl --as=system:serviceaccount:dso202-assignment-2:deployer apply -f manifests/11-ingress.yaml
+ingress.networking.k8s.io/tasktracker created
+
+$ kubectl get ingress -n dso202-assignment-2
+NAME          CLASS   HOSTS                      ADDRESS   PORTS     AGE
+tasktracker   nginx   tasktracker.localtest.me             80, 443   16s
+
+$ kubectl describe ingress tasktracker -n dso202-assignment-2 | sed -n '/TLS/,/Events/p'
+TLS:
+  tasktracker-tls terminates tasktracker.localtest.me
+Rules:
+  Host                      Path  Backends
+  ----                      ----  --------
+  tasktracker.localtest.me  
+                            /api   backend-svc:http (10.244.2.14:8080,10.244.1.24:8080)
+                            /      frontend-svc:http (10.244.2.13:8080,10.244.1.15:8080)
+Annotations:                <none>
+Events:
+
+$ curl -sk https://tasktracker.localtest.me:8443/api/status; echo
+
+
+$ curl -sk https://tasktracker.localtest.me:8443/ | grep -o '<title>.*</title>'
+
+$ curl -sk https://tasktracker.localtest.me:8443/config.js
+
+$ curl -sk -o /dev/null -w 'GET /apix -> %{http_code} (Prefix matches whole path segments: served by the frontend fallback)\n' https://tasktracker.localtest.me:8443/apix
+GET /apix -> 000 (Prefix matches whole path segments: served by the frontend fallback)
+
+$ curl -s -o /dev/null -w 'http://...:8081/ -> %{http_code} redirect to %{redirect_url}\n' -H 'Host: tasktracker.localtest.me' http://127.0.0.1:8081/
+http://...:8081/ -> 308 redirect to 
+
+$ curl -sk -o /dev/null -w 'unknown host -> %{http_code}\n' --resolve other.localtest.me:8443:127.0.0.1 https://other.localtest.me:8443/
+unknown host -> 404
+
+$ curl -vsk https://tasktracker.localtest.me:8443/api/status 2>&1 | grep -E 'subject:|issuer:|SSL connection|HTTP/'
+
+# CRUD through the Ingress
+$ curl -sk -X POST -H 'Content-Type: application/json' -d '{"title":"created through the Ingress"}' https://tasktracker.localtest.me:8443/api/tasks; echo
+
+
+$ curl -sk -X PUT -H 'Content-Type: application/json' -d '{"status":"done"}' https://tasktracker.localtest.me:8443/api/tasks/; echo
+
+
+$ curl -sk https://tasktracker.localtest.me:8443/api/tasks/; echo
+
+
+$ curl -sk -X DELETE -o /dev/null -w 'DELETE -> %{http_code}\n' https://tasktracker.localtest.me:8443/api/tasks/
+DELETE -> 000
+
+$ curl -sk https://tasktracker.localtest.me:8443/api/tasks | python -c 'import json,sys; print([(t["id"],t["title"]) for t in json.load(sys.stdin)])'
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)   [traceback shortened]
+
+# Requests are spread over both backend replicas
+$ for i in $(seq 1 20); do curl -sk -o /dev/null https://tasktracker.localtest.me:8443/api/status; done; kubectl logs -n ingress-nginx deploy/ingress-nginx-controller --tail=20 | grep -o 'dso202-assignment-2-backend-svc-http[^ ]* [^ ]*' | awk '{print $2}' | sort | uniq -c
+
+# ===== DIAGNOSIS =====
+$ curl -vsk --max-time 8 https://tasktracker.localtest.me:8443/api/status 2>&1 | grep -E 'IPv6|IPv4|Trying|schannel: failed'
+* IPv6: ::1
+* IPv4: (none)
+*   Trying [::1]:8443...
+
+$ curl -sk --max-time 8 --resolve tasktracker.localtest.me:8443:127.0.0.1 https://tasktracker.localtest.me:8443/api/status; echo
+{"status":"ok","db":"connected"}
+
+$ nslookup -type=A tasktracker.localtest.me 2>&1 | tail -2; nslookup -type=AAAA tasktracker.localtest.me 2>&1 | tail -2
+Address:  10.2.23.1
+
+Address:  ::1
+
+
+# ===== SECOND ATTEMPT: host tasktracker.localhost (RFC 6761, resolved by the client), proxy on 127.0.0.1 only =====
+$ scripts/host-proxy.sh
+ingress controller runs on worker-node-2 (172.20.0.2)
+localhost:8443 -> 172.20.0.2:443  (dso202-ingress-proxy-8443)
+localhost:8081 -> 172.20.0.2:80  (dso202-ingress-proxy-8081)
+
+$ scripts/make-tls-secret.sh dso202-assignment-2 tasktracker.localhost 2>&1 | grep -v "^\.\|^+\|^-\|^\*"
+secret/tasktracker-tls configured
+subject=CN=tasktracker.localhost, O=dso202
+X509v3 Subject Alternative Name: 
+    DNS:tasktracker.localhost
+notAfter=Dec  8 08:14:37 2026 GMT
+
+$ kubectl --as=system:serviceaccount:dso202-assignment-2:deployer apply -f manifests/01-configmap.yaml -f manifests/11-ingress.yaml
+configmap/app-config configured
+ingress.networking.k8s.io/tasktracker configured
+
+$ kubectl --as=system:serviceaccount:dso202-assignment-2:deployer -n dso202-assignment-2 rollout restart deployment/frontend deployment/backend && kubectl --as=system:serviceaccount:dso202-assignment-2:deployer -n dso202-assignment-2 rollout status deployment/frontend && kubectl --as=system:serviceaccount:dso202-assignment-2:deployer -n dso202-assignment-2 rollout status deployment/backend
+deployment.apps/frontend restarted
+deployment.apps/backend restarted
+Waiting for deployment "frontend" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "frontend" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "frontend" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "frontend" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "frontend" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "frontend" rollout to finish: 1 old replicas are pending termination...
+deployment "frontend" successfully rolled out
+Waiting for deployment "backend" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "backend" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "backend" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "backend" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "backend" rollout to finish: 1 old replicas are pending termination...
+deployment "backend" successfully rolled out
+
+$ kubectl get ingress -n dso202-assignment-2
+NAME          CLASS   HOSTS                   ADDRESS     PORTS     AGE
+tasktracker   nginx   tasktracker.localhost   localhost   80, 443   2m4s
+
+$ kubectl describe ingress tasktracker -n dso202-assignment-2 | sed -n '/TLS/,/Events/p'
+TLS:
+  tasktracker-tls terminates tasktracker.localhost
+Rules:
+  Host                   Path  Backends
+  ----                   ----  --------
+  tasktracker.localhost  
+                         /api   backend-svc:http (10.244.2.17:8080,10.244.1.27:8080)
+                         /      frontend-svc:http (10.244.2.16:8080,10.244.1.26:8080)
+Annotations:             <none>
+Events:
+
+$ curl -sk -w '  [%{remote_ip} %{http_code}]\n' https://tasktracker.localhost:8443/api/status
+{"status":"ok","db":"connected"}  [127.0.0.1 200]
+
+$ curl -sk https://tasktracker.localhost:8443/ | grep -o '<title>.*</title>'
+<title>Field Log — Task Tracker</title>
+
+$ curl -sk https://tasktracker.localhost:8443/config.js
+// Rendered at container start by docker-entrypoint.sh via envsubst.
+// Static assets can't read environment variables at request time, so the
+// real value gets baked into config.js once, right before nginx starts.
+window.__CONFIG__ = {
+  BACKEND_URL: "https://tasktracker.localhost:8443"
+};
+
+$ curl -sk -o /dev/null -w 'GET /apix -> %{http_code}\n' https://tasktracker.localhost:8443/apix; curl -sk https://tasktracker.localhost:8443/apix | grep -o '<title>.*</title>'
+GET /apix -> 200
+<title>Field Log — Task Tracker</title>
+
+$ curl -s -o /dev/null -w 'http://tasktracker.localhost:8081/ -> %{http_code}, Location: %{redirect_url}\n' http://tasktracker.localhost:8081/
+http://tasktracker.localhost:8081/ -> 308, Location: 
+
+$ curl -sk -o /dev/null -w 'unknown host -> %{http_code}\n' https://other.localhost:8443/
+unknown host -> 404
+
+$ curl -vsk https://tasktracker.localhost:8443/api/status 2>&1 | grep -iE 'subject|issuer|HTTP/1.1 200|strict-transport'
+< HTTP/1.1 200 OK
+< Strict-Transport-Security: max-age=31536000; includeSubDomains
+
+$ curl -sI http://tasktracker.localhost:8081/ | grep -iE '^HTTP|^location'
+HTTP/1.1 308 Permanent Redirect
+Location: https://tasktracker.localhost
+
+$ echo | openssl s_client -connect 127.0.0.1:8443 -servername tasktracker.localhost 2>/dev/null | openssl x509 -noout -subject -ext subjectAltName
+subject=CN=tasktracker.localhost, O=dso202
+X509v3 Subject Alternative Name: 
+    DNS:tasktracker.localhost
+
+$ echo | openssl s_client -connect 127.0.0.1:8443 -servername other.localhost 2>/dev/null | openssl x509 -noout -subject   # no TLS entry for this host: the controller's default fake certificate
+subject=O=Acme Co, CN=Kubernetes Ingress Controller Fake Certificate
+
+# CRUD through the Ingress
+$ curl -sk -X POST -H 'Content-Type: application/json' -d '{"title":"created through the Ingress"}' https://tasktracker.localhost:8443/api/tasks; echo
+{"id":6,"title":"created through the Ingress","description":null,"status":"pending","created_at":"2026-11-08T08:15:24.745Z"}
+
+$ curl -sk -X PUT -H 'Content-Type: application/json' -d '{"status":"done"}' https://tasktracker.localhost:8443/api/tasks/6; echo
+{"id":6,"title":"created through the Ingress","description":null,"status":"done","created_at":"2026-11-08T08:15:24.745Z"}
+
+$ curl -sk https://tasktracker.localhost:8443/api/tasks/6; echo
+{"id":6,"title":"created through the Ingress","description":null,"status":"done","created_at":"2026-11-08T08:15:24.745Z"}
+
+$ curl -sk -X DELETE -o /dev/null -w 'DELETE /api/tasks/6 -> %{http_code}\n' https://tasktracker.localhost:8443/api/tasks/6
+DELETE /api/tasks/6 -> 204
+
+$ curl -sk -o /dev/null -w 'GET deleted -> %{http_code}\n' https://tasktracker.localhost:8443/api/tasks/6
+GET deleted -> 404
+
+$ curl -sk https://tasktracker.localhost:8443/api/tasks | python -c 'import json,sys; print([(t["id"],t["title"]) for t in json.load(sys.stdin)])'
+[(1, 'Set up kind cluster'), (2, 'Write namespace manifest'), (3, 'Wire ConfigMap and Secret'), (5, 'written before db-0 was deleted')]
+
+# Load spread over the two backend replicas (controller access log, upstream address)
+$ for i in $(seq 1 20); do curl -sk -o /dev/null https://tasktracker.localhost:8443/api/status; done; kubectl logs -n ingress-nginx deploy/ingress-nginx-controller --tail=20 | grep -o 'backend-svc-http\] \[\] [0-9.:]*' | awk '{print $3}' | sort | uniq -c
+     12 10.244.1.27:8080
+      8 10.244.2.17:8080
+
+$ kubectl get pods -n dso202-assignment-2 -l app.kubernetes.io/component=backend -o custom-columns=POD:.metadata.name,IP:.status.podIP
+POD                        IP
+backend-866db4749d-9bcc4   10.244.1.27
+backend-866db4749d-qvxcx   10.244.2.17
+
+# The lecture's rewrite-target annotation, tried on a copy of the Ingress (host rewrite.localhost)
+$ grep -A1 'annotations:' C:/Users/zeroe/AppData/Local/Temp/rw.yaml
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+
+$ kubectl --as=system:serviceaccount:dso202-assignment-2:deployer apply -f C:/Users/zeroe/AppData/Local/Temp/rw.yaml
+ingress.networking.k8s.io/tasktracker-rewrite-test created
+
+$ curl -sk -w '  [%{http_code}]\n' https://rewrite.localhost:8443/api/tasks
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Error</title>
+</head>
+<body>
+<pre>Cannot GET /</pre>
+</body>
+</html>
+  [404]
+
+$ curl -sk -w '  [%{http_code}]\n' https://tasktracker.localhost:8443/api/tasks | cut -c1-80
+[{"id":1,"title":"Set up kind cluster","description":"Bring up the local cluster
+
+$ kubectl delete ingress tasktracker-rewrite-test -n dso202-assignment-2
+ingress.networking.k8s.io "tasktracker-rewrite-test" deleted from dso202-assignment-2 namespace
+
+# No ready backend: what the Ingress returns (Unit II 2.2.9: a 5xx means routing worked)
+$ kubectl --as=system:serviceaccount:dso202-assignment-2:deployer -n dso202-assignment-2 scale deployment backend --replicas=0 2>&1 | head -2
+Error from server (Forbidden): deployments.apps "backend" is forbidden: User "system:serviceaccount:dso202-assignment-2:deployer" cannot patch resource "deployments/scale" in API group "apps" in the namespace "dso202-assignment-2"
+
+$ kubectl -n dso202-assignment-2 scale deployment backend --replicas=0 && sleep 8 && curl -sk -o /dev/null -w '/api/status with 0 backends -> %{http_code}\n' https://tasktracker.localhost:8443/api/status; curl -sk -o /dev/null -w '/ (frontend) still -> %{http_code}\n' https://tasktracker.localhost:8443/
+deployment.apps/backend scaled
+/api/status with 0 backends -> 503
+/ (frontend) still -> 200
+
+$ kubectl --as=system:serviceaccount:dso202-assignment-2:deployer apply -f manifests/07-deployment-backend.yaml && kubectl -n dso202-assignment-2 rollout status deployment/backend --timeout=120s && curl -sk -w '  [%{http_code}]\n' https://tasktracker.localhost:8443/api/status
+deployment.apps/backend configured
+Waiting for deployment "backend" rollout to finish: 0 of 2 updated replicas are available...
+Waiting for deployment "backend" rollout to finish: 1 of 2 updated replicas are available...
+deployment "backend" successfully rolled out
+<html>
+<head><title>503 Service Temporarily Unavailable</title></head>
+<body>
+<center><h1>503 Service Temporarily Unavailable</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+  [503]
+
+# (the 503 above came immediately after 'rollout status': the controller had not synced the new endpoints yet)
+$ for i in 1 2 3 4 5 6; do c=$(curl -sk -o /dev/null -w '%{http_code}' https://tasktracker.localhost:8443/api/status); echo "$(date +%T) $c"; [ $c = 200 ] && break; sleep 2; done
+14:16:22 200
+
+$ curl -sk https://tasktracker.localhost:8443/api/status; echo
+{"status":"ok","db":"connected"}
+

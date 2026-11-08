@@ -1,0 +1,15 @@
+# =============================================================================
+# File        : manifests/00-namespace.yaml
+# Assignment  : DSO202 Assignment 2 -- Task Tracker rebuilt with Unit II
+#               concepts (StatefulSet, Ingress, RBAC)
+# Applied by  : cluster admin (bootstrap), before the deployer exists
+# =============================================================================
+# A separate namespace from Assignment 1 (dso202-assignment-1), so both
+# versions can run side by side and be compared on the same cluster.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dso202-assignment-2
+  labels:
+    app.kubernetes.io/part-of: tasktracker
+    dso202/assignment: "2"

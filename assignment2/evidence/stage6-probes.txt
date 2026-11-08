@@ -1,0 +1,154 @@
+$ kubectl get pods -n dso202-assignment-2 -l app.kubernetes.io/component=backend
+NAME                      READY   STATUS    RESTARTS      AGE
+backend-88d69b548-j7jfg   0/1     Running   2 (16s ago)   66s
+backend-88d69b548-v9bb9   1/1     Running   2 (16s ago)   66s
+
+$ kubectl get endpointslices -n dso202-assignment-2 -l kubernetes.io/service-name=backend-svc -o jsonpath='{range .items[*].endpoints[*]}{.addresses[0]} ready={.conditions.ready}{"\n"}{end}'
+10.244.2.12 ready=true
+10.244.1.14 ready=false
+
+$ kubectl run probe -n dso202-assignment-2 --rm -i --restart=Never --image=busybox:1.37 --overrides='{"spec":{"automountServiceAccountToken":false}}' -- wget -qO- http://backend-svc:8080/api/status; echo
+{"status":"ok","db":"connected"}All commands and output from this session will be recorded in container logs, including credentials and sensitive information passed through the command prompt.
+If you don't see a command prompt, try pressing enter.
+pod "probe" deleted from dso202-assignment-2 namespace
+
+
+# Take the database away (scale to 0) and watch the backend
+$ date +%T; kubectl scale statefulset db -n dso202-assignment-2 --replicas=0
+13:53:48
+statefulset.apps/db scaled
+
+$ date +%T; kubectl get pods -n dso202-assignment-2 -l app.kubernetes.io/component=backend
+13:54:13
+NAME                      READY   STATUS    RESTARTS      AGE
+backend-88d69b548-j7jfg   0/1     Running   3 (26s ago)   95s
+backend-88d69b548-v9bb9   0/1     Running   3 (26s ago)   95s
+
+$ kubectl get endpointslices -n dso202-assignment-2 -l kubernetes.io/service-name=backend-svc -o jsonpath='{range .items[*].endpoints[*]}{.addresses[0]} ready={.conditions.ready}{"\n"}{end}'
+10.244.2.12 ready=false
+10.244.1.14 ready=false
+
+$ kubectl get events -n dso202-assignment-2 --field-selector reason=Unhealthy -o custom-columns=OBJ:.involvedObject.name,MSG:.message --no-headers | sort -u | head -4
+
+backend-88d69b548-j7jfg   Liveness probe failed: dial tcp 10.244.1.14:8080: connect: connection refused
+backend-88d69b548-j7jfg   Readiness probe failed: Get "http://10.244.1.14:8080/api/status": dial tcp 10.244.1.14:8080: connect: connection refused
+backend-88d69b548-j7jfg   Startup probe failed: dial tcp 10.244.1.14:8080: connect: connection refused
+
+$ kubectl get pods -n dso202-assignment-2 -l app.kubernetes.io/component=backend -o custom-columns=NAME:.metadata.name,RESTARTS:.status.containerStatuses[0].restartCount
+NAME                      RESTARTS
+backend-88d69b548-j7jfg   3
+backend-88d69b548-v9bb9   3
+
+# Bring it back
+$ date +%T; kubectl scale statefulset db -n dso202-assignment-2 --replicas=1 && kubectl rollout status statefulset/db -n dso202-assignment-2 --timeout=120s
+13:54:14
+statefulset.apps/db scaled
+Waiting for 1 pods to be ready...
+partitioned roll out complete: 1 new pods have been updated...
+
+$ date +%T; kubectl get pods -n dso202-assignment-2 -l app.kubernetes.io/component=backend; kubectl get endpointslices -n dso202-assignment-2 -l kubernetes.io/service-name=backend-svc -o jsonpath='{range .items[*].endpoints[*]}{.addresses[0]} ready={.conditions.ready}{"\n"}{end}'
+13:54:27
+NAME                      READY   STATUS    RESTARTS      AGE
+backend-88d69b548-j7jfg   1/1     Running   3 (41s ago)   110s
+backend-88d69b548-v9bb9   1/1     Running   3 (41s ago)   110s
+10.244.2.12 ready=true
+10.244.1.14 ready=true
+
+# Why did the backend RESTART? The liveness probe is only a TCP check...
+$ kubectl get pod -n dso202-assignment-2 -l app.kubernetes.io/component=backend -o jsonpath='{range .items[*]}{.metadata.name} lastState={.status.containerStatuses[0].lastState.terminated.reason} exitCode={.status.containerStatuses[0].lastState.terminated.exitCode}{"\n"}{end}'
+backend-88d69b548-j7jfg lastState=Error exitCode=1
+backend-88d69b548-v9bb9 lastState=Error exitCode=1
+
+$ kubectl logs backend-88d69b548-j7jfg -n dso202-assignment-2 --previous | grep -vE '^\s{2,}|^\s*[]}]' | head -8
+[db] connected
+[server] listening on :8080
+node:events:497
+
+error: terminating connection due to administrator command
+Emitted 'error' event on BoundPool instance at:
+
+Node.js v22.23.2
+
+# Fix: dso202-backend:1.1 (app-patch/backend) adds pool.on('error')
+$ diff ../assignment1/Assignment-1-app-code/backend/src/db.js app-patch/backend/src/db.js
+12a13,23
+> // Assignment 2 patch (dso202-backend:1.1). When Postgres shuts down or
+> // restarts, it terminates the pool's IDLE connections, and the pool emits
+> // 'error'. With no listener, Node treats that as an unhandled error and the
+> // whole process exits (exit code 1) -- observed in Assignment 2 when db-0 was
+> // scaled to 0. The pool already discards the broken client and opens a new
+> // one on the next query, so logging is all that is needed. Readiness
+> // (/api/status -> 503) then reports the outage instead of a crash loop.
+> pool.on('error', (err) => {
+>   console.log(`[db] idle connection lost (${err.code || err.message}); the pool will reconnect on next use`);
+> });
+> 
+
+$ docker build -q -t dso202-backend:1.1 app-patch/backend
+sha256:b29794ae7393708c488ebfafb3abad3e60a7a26e7e183df8fec97eb444d4f8f1
+
+$ docker run --rm --entrypoint sh dso202-backend:1.1 -c "id; grep -c \"pool.on(.error\" /app/src/db.js"
+uid=100(app) gid=101(app) groups=101(app),101(app)
+1
+
+$ kind load docker-image dso202-backend:1.1 --name dso202 2>&1 | tail -2
+Image: "dso202-backend:1.1" with ID "sha256:b29794ae7393708c488ebfafb3abad3e60a7a26e7e183df8fec97eb444d4f8f1" not yet present on node "dso202-worker2", loading...
+Image: "dso202-backend:1.1" with ID "sha256:b29794ae7393708c488ebfafb3abad3e60a7a26e7e183df8fec97eb444d4f8f1" not yet present on node "dso202-worker", loading...
+
+$ kubectl --as=system:serviceaccount:dso202-assignment-2:deployer apply -f manifests/07-deployment-backend.yaml && kubectl --as=system:serviceaccount:dso202-assignment-2:deployer -n dso202-assignment-2 rollout status deployment/backend --timeout=120s
+deployment.apps/backend configured
+Waiting for deployment "backend" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "backend" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "backend" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "backend" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "backend" rollout to finish: 1 old replicas are pending termination...
+deployment "backend" successfully rolled out
+
+# Repeat the outage with 1.1
+$ kubectl get pods -n dso202-assignment-2 -l app.kubernetes.io/component=backend -o custom-columns=NAME:.metadata.name,READY:.status.containerStatuses[0].ready,RESTARTS:.status.containerStatuses[0].restartCount,IMAGE:.spec.containers[0].image
+NAME                      READY   RESTARTS   IMAGE
+backend-88d69b548-j7jfg   true    3          dso202-backend:1.0
+backend-88d69b548-v9bb9   true    3          dso202-backend:1.0
+backend-cf7d69847-67h6b   true    0          dso202-backend:1.1
+backend-cf7d69847-tkzb4   true    0          dso202-backend:1.1
+
+$ date +%T; kubectl scale statefulset db -n dso202-assignment-2 --replicas=0
+13:55:59
+statefulset.apps/db scaled
+
+$ date +%T; kubectl get pods -n dso202-assignment-2 -l app.kubernetes.io/component=backend -o custom-columns=NAME:.metadata.name,READY:.status.containerStatuses[0].ready,RESTARTS:.status.containerStatuses[0].restartCount,IMAGE:.spec.containers[0].image
+13:56:29
+NAME                      READY   RESTARTS   IMAGE
+backend-cf7d69847-67h6b   false   0          dso202-backend:1.1
+backend-cf7d69847-tkzb4   false   0          dso202-backend:1.1
+
+$ kubectl get endpointslices -n dso202-assignment-2 -l kubernetes.io/service-name=backend-svc -o jsonpath='{range .items[*].endpoints[*]}{.addresses[0]} ready={.conditions.ready}{"\n"}{end}'
+10.244.2.14 ready=false
+10.244.1.24 ready=false
+
+$ kubectl logs deploy/backend -n dso202-assignment-2 --tail=3
+Found 2 pods, using pod/backend-cf7d69847-tkzb4
+[db] connected
+[server] listening on :8080
+[db] idle connection lost (57P01); the pool will reconnect on next use
+
+$ kubectl get events -n dso202-assignment-2 --field-selector reason=Unhealthy --sort-by=.lastTimestamp -o custom-columns=MSG:.message --no-headers | tail -2
+Readiness probe failed: HTTP probe failed with statuscode: 503
+Readiness probe failed: HTTP probe failed with statuscode: 503
+
+$ date +%T; kubectl scale statefulset db -n dso202-assignment-2 --replicas=1 && kubectl rollout status statefulset/db -n dso202-assignment-2 --timeout=120s
+13:56:30
+statefulset.apps/db scaled
+Waiting for 1 pods to be ready...
+partitioned roll out complete: 1 new pods have been updated...
+
+$ date +%T; kubectl get pods -n dso202-assignment-2 -l app.kubernetes.io/component=backend -o custom-columns=NAME:.metadata.name,READY:.status.containerStatuses[0].ready,RESTARTS:.status.containerStatuses[0].restartCount,IMAGE:.spec.containers[0].image
+13:56:44
+NAME                      READY   RESTARTS   IMAGE
+backend-cf7d69847-67h6b   true    0          dso202-backend:1.1
+backend-cf7d69847-tkzb4   true    0          dso202-backend:1.1
+
+$ kubectl get endpointslices -n dso202-assignment-2 -l kubernetes.io/service-name=backend-svc -o jsonpath='{range .items[*].endpoints[*]}{.addresses[0]} ready={.conditions.ready}{"\n"}{end}'
+10.244.2.14 ready=true
+10.244.1.24 ready=true
+

@@ -1,0 +1,26 @@
+$ kubectl apply --dry-run=server -f manifests/00-namespace.yaml
+namespace/dso202-assignment-2 created (server dry run)
+
+$ kubectl apply --dry-run=server -f manifests/
+namespace/dso202-assignment-2 unchanged (server dry run)
+configmap/app-config created (server dry run)
+secret/db-credentials created (server dry run)
+serviceaccount/frontend created (server dry run)
+serviceaccount/backend created (server dry run)
+serviceaccount/db created (server dry run)
+service/db-headless created (server dry run)
+statefulset.apps/db created (server dry run)
+service/db-svc created (server dry run)
+deployment.apps/backend created (server dry run)
+service/backend-svc created (server dry run)
+deployment.apps/frontend created (server dry run)
+service/frontend-svc created (server dry run)
+serviceaccount/deployer created (server dry run)
+role.rbac.authorization.k8s.io/deployer created (server dry run)
+rolebinding.rbac.authorization.k8s.io/deployer created (server dry run)
+rolebinding.rbac.authorization.k8s.io/tasktracker-developers-view created (server dry run)
+Error from server (InternalError): error when creating "manifests\\11-ingress.yaml": Internal error occurred: failed calling webhook "validate.nginx.ingress.kubernetes.io": failed to call webhook: Post "https://ingress-nginx-controller-admission.ingress-nginx.svc:443/networking/v1/ingresses?timeout=10s": dial tcp 10.96.59.154:443: connect: connection refused
+
+$ kubectl delete namespace dso202-assignment-2 --wait=true   # namespace was only needed for the dry run of namespaced objects
+namespace "dso202-assignment-2" deleted
+

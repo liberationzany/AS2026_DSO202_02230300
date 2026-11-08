@@ -1,0 +1,22 @@
+$ kubectl config current-context; kubectl get nodes -o wide
+kind-dso202
+NAME            STATUS   ROLES           AGE   VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE                       KERNEL-VERSION                             CONTAINER-RUNTIME
+control-plane   Ready    control-plane   88d   v1.36.1   172.20.0.3    <none>        Debian GNU/Linux 13 (trixie)   6.6.87.2-microsoft-standard-WSL2 (amd64)   containerd://2.3.1
+worker-node-1   Ready    <none>          88d   v1.36.1   172.20.0.5    <none>        Debian GNU/Linux 13 (trixie)   6.6.87.2-microsoft-standard-WSL2 (amd64)   containerd://2.3.1
+worker-node-2   Ready    <none>          88d   v1.36.1   172.20.0.2    <none>        Debian GNU/Linux 13 (trixie)   6.6.87.2-microsoft-standard-WSL2 (amd64)   containerd://2.3.1
+
+$ kubectl get ingressclass; kubectl get pods -A | grep -i ingress || echo "no ingress controller installed"
+No resources found
+no ingress controller installed
+
+$ kubectl get pods -n dso202-assignment-1
+NAME                                   READY   STATUS    RESTARTS       AGE
+backend-deployment-5776566bd8-ml4wd    1/1     Running   10 (42s ago)   48d
+db-deployment-79cc8d968c-fjjp5         1/1     Running   9 (42s ago)    48d
+frontend-deployment-556c5f5c97-2kb7b   1/1     Running   9 (42s ago)    48d
+
+$ docker exec dso202-control-plane crictl images | grep dso202-
+docker.io/library/dso202-backend                1.0                  d059b3bbd3fb2       61.6MB
+docker.io/library/dso202-db                     1.0                  9e4e67cadb908       117MB
+docker.io/library/dso202-frontend               1.0                  92f9bc1ce8476       26.1MB
+

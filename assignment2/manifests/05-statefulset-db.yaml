@@ -1,0 +1,110 @@
+# =============================================================================
+# File        : manifests/05-statefulset-db.yaml
+# Applied by  : deployer ServiceAccount
+# Watch with  : kubectl rollout status statefulset/db -n dso202-assignment-2
+#
+# Assignment 1 ran Postgres as a Deployment (strategy: Recreate) with a
+# separately created PVC. Unit II 2.1 replaces that with a StatefulSet:
+#   - stable identity: the Pod is always db-0, never a random suffix;
+#   - volumeClaimTemplates: the PVC (data-db-0) is created FOR the Pod and
+#     tied to its ordinal, instead of a hand-made PVC any Pod could mount;
+#   - one-at-a-time replacement: the old Pod is gone before its successor
+#     starts, so two Postgres processes never fight over the ReadWriteOnce
+#     volume -- what "strategy: Recreate" had to guarantee by hand before.
+#
+# replicas stays 1. The image runs one standalone Postgres; three replicas
+# would be three unrelated databases, each with its own empty volume, not a
+# replicated cluster. Replication needs Postgres-level configuration that a
+# StatefulSet does not provide -- the job of a Postgres Operator
+# (Unit II 2.4; see README).
+# =============================================================================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: db
+  namespace: dso202-assignment-2
+  labels:
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: tasktracker
+spec:
+  serviceName: db-headless          # the governing headless Service (04-)
+  replicas: 1
+  podManagementPolicy: OrderedReady # the default, stated deliberately (2.1.6)
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tasktracker
+      app.kubernetes.io/component: database
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      partition: 0                  # raise it to hold back low ordinals (canary)
+  # Stated explicitly rather than left to the default (2.1.6): deleting the
+  # StatefulSet or scaling it down must never delete the database's data.
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tasktracker
+        app.kubernetes.io/component: database
+        app.kubernetes.io/part-of: tasktracker
+    spec:
+      serviceAccountName: db
+      automountServiceAccountToken: false
+      containers:
+        - name: db
+          image: dso202-db:1.0      # built locally in Assignment 1, kind-loaded
+          imagePullPolicy: Never
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef: {name: app-config, key: POSTGRES_DB}
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef: {name: db-credentials, key: POSTGRES_USER}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: db-credentials, key: POSTGRES_PASSWORD}
+            # A subdirectory, because the volume root may not be empty and
+            # initdb refuses a non-empty PGDATA (same as Assignment 1).
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          # Ready only when Postgres accepts connections for the app's own
+          # user and database -- only then does db-svc send traffic here.
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -h 127.0.0.1 -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+            periodSeconds: 5
+            failureThreshold: 3
+          # Liveness only asks whether the server answers at all, and allows
+          # time for initdb plus the seed script on a fresh volume.
+          livenessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -h 127.0.0.1"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 6
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+  # One PVC per replica, named <template>-<statefulset>-<ordinal>: data-db-0.
+  # No storageClassName: kind's default local-path class (WaitForFirstConsumer).
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          app.kubernetes.io/name: tasktracker
+          app.kubernetes.io/component: database
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi

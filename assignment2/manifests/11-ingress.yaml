@@ -1,0 +1,53 @@
+# =============================================================================
+# File        : manifests/11-ingress.yaml
+# Applied by  : deployer ServiceAccount
+# Needs       : the ingress-nginx controller (ingress-controller/) and the
+#               tasktracker-tls Secret (scripts/make-tls-secret.sh)
+#
+# Unit II 2.2.7, applied to this app: one host, path-based routing, TLS
+# terminated at the controller.
+#   https://tasktracker.localhost/api/...  -> backend-svc:8080
+#   https://tasktracker.localhost/...      -> frontend-svc:8080
+# The longest matching Prefix wins, so /api/tasks goes to the backend even
+# though "/" also matches it. Prefix matching is per path SEGMENT: /api
+# matches /api/tasks but not /apix.
+#
+# The lecture example's annotation
+#   nginx.ingress.kubernetes.io/rewrite-target: /
+# is deliberately NOT used. It rewrites every matched path to "/", so
+# /api/tasks would reach Express as "/" and return 404: this backend's
+# routes are mounted under /api and expect the full path (tested; see
+# evidence/stage4-ingress.txt).
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tasktracker
+  namespace: dso202-assignment-2
+  labels:
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/part-of: tasktracker
+spec:
+  ingressClassName: nginx           # not the deprecated kubernetes.io/ingress.class annotation
+  tls:
+    - hosts:
+        - tasktracker.localhost
+      secretName: tasktracker-tls   # kubernetes.io/tls Secret, created by script
+  rules:
+    - host: tasktracker.localhost
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: backend-svc
+                port:
+                  name: http
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-svc
+                port:
+                  name: http

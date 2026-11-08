@@ -1,0 +1,52 @@
+$ kubectl get all,ingress,pvc,sa,role,rolebinding -n dso202-assignment-2
+NAME                           READY   STATUS    RESTARTS   AGE
+pod/backend-866db4749d-nj57v   1/1     Running   0          34s
+pod/backend-866db4749d-tsdb5   1/1     Running   0          34s
+pod/db-0                       1/1     Running   0          20m
+pod/frontend-6d9459c4b-k59ll   1/1     Running   0          2m4s
+pod/frontend-6d9459c4b-rgzmk   1/1     Running   0          2m5s
+
+NAME                   TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+service/backend-svc    ClusterIP   10.96.105.215   <none>        8080/TCP   24m
+service/db-headless    ClusterIP   None            <none>        5432/TCP   24m
+service/db-svc         ClusterIP   10.96.150.103   <none>        5432/TCP   24m
+service/frontend-svc   ClusterIP   10.96.127.35    <none>        8080/TCP   24m
+
+NAME                       READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/backend    2/2     2            2           24m
+deployment.apps/frontend   2/2     2            2           24m
+
+NAME                                 DESIRED   CURRENT   READY   AGE
+replicaset.apps/backend-866db4749d   2         2         2       2m5s
+replicaset.apps/backend-88d69b548    0         0         0       24m
+replicaset.apps/backend-cf7d69847    0         0         0       20m
+replicaset.apps/frontend-6d9459c4b   2         2         2       2m5s
+replicaset.apps/frontend-8d4779567   0         0         0       24m
+
+NAME                  READY   AGE
+statefulset.apps/db   1/1     23m
+
+NAME                                    CLASS   HOSTS                   ADDRESS     PORTS     AGE
+ingress.networking.k8s.io/tasktracker   nginx   tasktracker.localhost   localhost   80, 443   3m45s
+
+NAME                              STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+persistentvolumeclaim/data-db-0   Bound    pvc-b90e07ae-f13c-4210-8d4b-bb37d6c65629   1Gi        RWO            standard       <unset>                 24m
+
+NAME                      AGE
+serviceaccount/backend    24m
+serviceaccount/db         24m
+serviceaccount/default    24m
+serviceaccount/deployer   24m
+serviceaccount/frontend   24m
+
+NAME                                      CREATED AT
+role.rbac.authorization.k8s.io/deployer   2026-11-08T07:52:42Z
+
+NAME                                                                ROLE               AGE
+rolebinding.rbac.authorization.k8s.io/deployer                      Role/deployer      24m
+rolebinding.rbac.authorization.k8s.io/tasktracker-developers-view   ClusterRole/view   24m
+
+$ docker ps --filter name=dso202-ingress-proxy --format "{{.Names}}  {{.Ports}}"
+dso202-ingress-proxy-8081  127.0.0.1:8081->8081/tcp
+dso202-ingress-proxy-8443  127.0.0.1:8443->8443/tcp
+

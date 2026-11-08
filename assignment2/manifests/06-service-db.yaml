@@ -1,0 +1,28 @@
+# =============================================================================
+# File        : manifests/06-service-db.yaml
+# Applied by  : deployer ServiceAccount
+#
+# The CLIENT-facing database Service (DB_HOST=db-svc), kept separate from the
+# StatefulSet's headless Service (2.1.6: do not reuse one Service for both
+# roles). A ClusterIP Service only routes to Ready Pods, so the backend is
+# never sent to a Postgres that is still running initdb.
+# ClusterIP only: the database is never reachable from outside the cluster.
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: db-svc
+  namespace: dso202-assignment-2
+  labels:
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: tasktracker
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/component: database
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres

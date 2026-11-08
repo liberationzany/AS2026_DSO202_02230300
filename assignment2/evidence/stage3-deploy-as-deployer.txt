@@ -1,0 +1,63 @@
+# 1) Bootstrap, as cluster admin: namespace, workload ServiceAccounts, RBAC
+$ kubectl apply -f manifests/00-namespace.yaml -f manifests/03-serviceaccounts.yaml -f manifests/12-rbac-deployer.yaml -f manifests/13-rbac-viewers.yaml
+namespace/dso202-assignment-2 created
+serviceaccount/frontend created
+serviceaccount/backend created
+serviceaccount/db created
+serviceaccount/deployer created
+role.rbac.authorization.k8s.io/deployer created
+rolebinding.rbac.authorization.k8s.io/deployer created
+rolebinding.rbac.authorization.k8s.io/tasktracker-developers-view created
+
+# 2) Everything else, applied AS the deployer ServiceAccount
+$ kubectl --as=system:serviceaccount:dso202-assignment-2:deployer apply -f manifests/01-configmap.yaml -f manifests/02-secret.yaml -f manifests/04-service-db-headless.yaml -f manifests/05-statefulset-db.yaml -f manifests/06-service-db.yaml -f manifests/07-deployment-backend.yaml -f manifests/08-service-backend.yaml -f manifests/09-deployment-frontend.yaml -f manifests/10-service-frontend.yaml
+configmap/app-config created
+secret/db-credentials created
+service/db-headless created
+statefulset.apps/db created
+service/db-svc created
+deployment.apps/backend created
+service/backend-svc created
+deployment.apps/frontend created
+service/frontend-svc created
+
+$ kubectl --as=system:serviceaccount:dso202-assignment-2:deployer -n dso202-assignment-2 rollout status statefulset/db --timeout=180s
+Waiting for 1 pods to be ready...
+partitioned roll out complete: 1 new pods have been updated...
+
+$ kubectl --as=system:serviceaccount:dso202-assignment-2:deployer -n dso202-assignment-2 rollout status deployment/backend --timeout=180s
+Waiting for deployment "backend" rollout to finish: 0 of 2 updated replicas are available...
+Waiting for deployment "backend" rollout to finish: 1 of 2 updated replicas are available...
+deployment "backend" successfully rolled out
+
+$ kubectl --as=system:serviceaccount:dso202-assignment-2:deployer -n dso202-assignment-2 rollout status deployment/frontend --timeout=120s
+deployment "frontend" successfully rolled out
+
+$ kubectl get all,pvc -n dso202-assignment-2 -o wide
+NAME                           READY   STATUS    RESTARTS   AGE   IP            NODE            NOMINATED NODE   READINESS GATES
+pod/backend-88d69b548-j7jfg    1/1     Running   0          18s   10.244.1.14   worker-node-2   <none>           <none>
+pod/backend-88d69b548-v9bb9    1/1     Running   0          18s   10.244.2.12   worker-node-1   <none>           <none>
+pod/db-0                       1/1     Running   0          18s   10.244.1.17   worker-node-2   <none>           <none>
+pod/frontend-8d4779567-c74th   1/1     Running   0          18s   10.244.1.15   worker-node-2   <none>           <none>
+pod/frontend-8d4779567-f9cgc   1/1     Running   0          18s   10.244.2.13   worker-node-1   <none>           <none>
+
+NAME                   TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE   SELECTOR
+service/backend-svc    ClusterIP   10.96.105.215   <none>        8080/TCP   18s   app.kubernetes.io/component=backend,app.kubernetes.io/name=tasktracker
+service/db-headless    ClusterIP   None            <none>        5432/TCP   18s   app.kubernetes.io/component=database,app.kubernetes.io/name=tasktracker
+service/db-svc         ClusterIP   10.96.150.103   <none>        5432/TCP   18s   app.kubernetes.io/component=database,app.kubernetes.io/name=tasktracker
+service/frontend-svc   ClusterIP   10.96.127.35    <none>        8080/TCP   18s   app.kubernetes.io/component=frontend,app.kubernetes.io/name=tasktracker
+
+NAME                       READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES                SELECTOR
+deployment.apps/backend    2/2     2            2           18s   backend      dso202-backend:1.0    app.kubernetes.io/component=backend,app.kubernetes.io/name=tasktracker
+deployment.apps/frontend   2/2     2            2           18s   frontend     dso202-frontend:1.0   app.kubernetes.io/component=frontend,app.kubernetes.io/name=tasktracker
+
+NAME                                 DESIRED   CURRENT   READY   AGE   CONTAINERS   IMAGES                SELECTOR
+replicaset.apps/backend-88d69b548    2         2         2       18s   backend      dso202-backend:1.0    app.kubernetes.io/component=backend,app.kubernetes.io/name=tasktracker,pod-template-hash=88d69b548
+replicaset.apps/frontend-8d4779567   2         2         2       18s   frontend     dso202-frontend:1.0   app.kubernetes.io/component=frontend,app.kubernetes.io/name=tasktracker,pod-template-hash=8d4779567
+
+NAME                  READY   AGE   CONTAINERS   IMAGES
+statefulset.apps/db   1/1     18s   db           dso202-db:1.0
+
+NAME                              STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE   VOLUMEMODE
+persistentvolumeclaim/data-db-0   Bound    pvc-b90e07ae-f13c-4210-8d4b-bb37d6c65629   1Gi        RWO            standard       <unset>                 18s   Filesystem
+

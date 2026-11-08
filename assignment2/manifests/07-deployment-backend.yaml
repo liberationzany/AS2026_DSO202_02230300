@@ -1,0 +1,94 @@
+# =============================================================================
+# File        : manifests/07-deployment-backend.yaml
+# Applied by  : deployer ServiceAccount
+# Watch with  : kubectl rollout status deployment/backend -n dso202-assignment-2
+#
+# Changes from Assignment 1:
+#   - 2 replicas: the Ingress (and backend-svc) spread /api/* across them.
+#   - Probes. Unit II 2.2.8 traces intermittent 502s at the Ingress back to a
+#     backend Pod failing readiness. Probes are what make "Ready" mean
+#     something:
+#       startupProbe   - server.js only opens its port AFTER db.js has
+#                        connected to Postgres, so a slow database must not
+#                        get the container killed. Up to 60 x 5 s = 5 min.
+#       readinessProbe - GET /api/status runs "SELECT 1" and returns 503 when
+#                        the database is unreachable; the Pod then leaves
+#                        backend-svc's endpoints and the Ingress stops
+#                        routing to it, instead of serving errors.
+#       livenessProbe  - only a TCP check: losing the DATABASE must not
+#                        restart the BACKEND (that would not fix anything).
+#                        This only holds with image 1.1, see below.
+#   - Its own ServiceAccount with no token, and a restricted security context.
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: dso202-assignment-2
+  labels:
+    app.kubernetes.io/name: tasktracker
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: tasktracker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tasktracker
+      app.kubernetes.io/component: backend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tasktracker
+        app.kubernetes.io/component: backend
+        app.kubernetes.io/part-of: tasktracker
+    spec:
+      serviceAccountName: backend
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 100                # "app" in the image; numeric so the
+        runAsGroup: 101               # kubelet can verify runAsNonRoot
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: backend
+          # 1.1 = 1.0 plus a pool 'error' handler (app-patch/backend): with
+          # 1.0, a database restart crashed Node (evidence/stage6-probes.txt).
+          image: dso202-backend:1.1
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: DB_HOST
+              valueFrom: {configMapKeyRef: {name: app-config, key: DB_HOST}}
+            - name: DB_PORT
+              valueFrom: {configMapKeyRef: {name: app-config, key: DB_PORT}}
+            - name: DB_NAME
+              valueFrom: {configMapKeyRef: {name: app-config, key: DB_NAME}}
+            - name: APP_PORT
+              valueFrom: {configMapKeyRef: {name: app-config, key: APP_PORT}}
+            - name: CORS_ORIGIN
+              valueFrom: {configMapKeyRef: {name: app-config, key: CORS_ORIGIN}}
+            - name: DB_USER
+              valueFrom: {secretKeyRef: {name: db-credentials, key: DB_USER}}
+            - name: DB_PASSWORD
+              valueFrom: {secretKeyRef: {name: db-credentials, key: DB_PASSWORD}}
+          startupProbe:
+            tcpSocket: {port: http}
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: {path: /api/status, port: http}
+            periodSeconds: 5
+            failureThreshold: 2
+          livenessProbe:
+            tcpSocket: {port: http}
+            periodSeconds: 10
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true   # Node writes nothing to disk
+            capabilities: {drop: ["ALL"]}
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 250m, memory: 128Mi}

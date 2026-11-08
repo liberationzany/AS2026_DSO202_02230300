@@ -1,0 +1,132 @@
+# Deployer: exactly what the pipeline needs, in this namespace only
+$ kubectl auth can-i patch deployments --as=system:serviceaccount:dso202-assignment-2:deployer -n dso202-assignment-2
+yes
+
+$ kubectl auth can-i patch statefulsets --as=system:serviceaccount:dso202-assignment-2:deployer -n dso202-assignment-2
+yes
+
+$ kubectl auth can-i create ingresses.networking.k8s.io --as=system:serviceaccount:dso202-assignment-2:deployer -n dso202-assignment-2
+yes
+
+$ kubectl auth can-i delete deployments --as=system:serviceaccount:dso202-assignment-2:deployer -n dso202-assignment-2
+no
+
+$ kubectl auth can-i delete persistentvolumeclaims --as=system:serviceaccount:dso202-assignment-2:deployer -n dso202-assignment-2
+no
+
+$ kubectl auth can-i create rolebindings.rbac.authorization.k8s.io --as=system:serviceaccount:dso202-assignment-2:deployer -n dso202-assignment-2
+no
+
+$ kubectl auth can-i create pods/exec --as=system:serviceaccount:dso202-assignment-2:deployer -n dso202-assignment-2
+no
+
+$ kubectl auth can-i patch deployments --as=system:serviceaccount:dso202-assignment-2:deployer -n dso202-assignment-1
+no
+
+$ kubectl auth can-i list nodes --as=system:serviceaccount:dso202-assignment-2:deployer -n dso202-assignment-2
+Warning: resource 'nodes' is not namespace scoped
+
+no
+
+# Workload ServiceAccounts: no API permissions at all, and no token mounted
+$ kubectl auth can-i list pods --as=system:serviceaccount:dso202-assignment-2:backend -n dso202-assignment-2
+no
+
+$ kubectl auth can-i get secrets --as=system:serviceaccount:dso202-assignment-2:frontend -n dso202-assignment-2
+no
+
+$ kubectl get pods -n dso202-assignment-2 -o custom-columns=POD:.metadata.name,SA:.spec.serviceAccountName,AUTOMOUNT:.spec.automountServiceAccountToken
+POD                        SA         AUTOMOUNT
+backend-cf7d69847-67h6b    backend    false
+backend-cf7d69847-tkzb4    backend    false
+db-0                       db         false
+frontend-8d4779567-c74th   frontend   false
+frontend-8d4779567-f9cgc   frontend   false
+
+$ kubectl exec deploy/backend -n dso202-assignment-2 -- ls /var/run/secrets/kubernetes.io/serviceaccount
+ls: /var/run/secrets/kubernetes.io/serviceaccount: No such file or directory
+command terminated with exit code 1
+
+$ kubectl exec deploy/backend -n dso202-assignment-2 -- id; kubectl exec deploy/frontend -n dso202-assignment-2 -- id
+uid=100(app) gid=101(app) groups=101(app)
+uid=101(nginx) gid=101(nginx) groups=101(nginx)
+
+$ kubectl exec deploy/backend -n dso202-assignment-2 -- touch /app/x
+touch: /app/x: Read-only file system
+command terminated with exit code 1
+
+# Developers group: built-in 'view' ClusterRole via a RoleBinding (namespace-scoped)
+$ kubectl auth can-i list pods -n dso202-assignment-2 --as=alice --as-group=tasktracker-developers
+yes
+
+$ kubectl auth can-i get secrets -n dso202-assignment-2 --as=alice --as-group=tasktracker-developers   # view excludes Secrets
+no
+
+$ kubectl auth can-i delete pods -n dso202-assignment-2 --as=alice --as-group=tasktracker-developers
+no
+
+$ kubectl auth can-i list pods -n dso202-assignment-1 --as=alice --as-group=tasktracker-developers
+no
+
+# Unit II 2.3.8 incident, reproduced on a throwaway copy of the Role without 'patch'
+$ kubectl get role deployer -n dso202-assignment-2 -o json | python -c 'import json,sys; r=json.load(sys.stdin); [x["verbs"].remove("patch") for x in r["rules"] if "patch" in x["verbs"]]; r["metadata"]={"name":"deployer-nopatch","namespace":"dso202-assignment-2"}; print(json.dumps(r))' | kubectl apply -f -
+role.rbac.authorization.k8s.io/deployer-nopatch created
+
+$ kubectl create serviceaccount deployer-nopatch -n dso202-assignment-2 && kubectl create rolebinding deployer-nopatch -n dso202-assignment-2 --role=deployer-nopatch --serviceaccount=dso202-assignment-2:deployer-nopatch
+serviceaccount/deployer-nopatch created
+rolebinding.rbac.authorization.k8s.io/deployer-nopatch created
+
+$ kubectl --as=system:serviceaccount:dso202-assignment-2:deployer-nopatch apply -f manifests/09-deployment-frontend.yaml
+deployment.apps/frontend unchanged
+
+$ kubectl --as=system:serviceaccount:dso202-assignment-2:deployer-nopatch replace -f manifests/09-deployment-frontend.yaml   # PUT = update verb
+deployment.apps/frontend replaced
+
+$ kubectl delete rolebinding,role,serviceaccount deployer-nopatch -n dso202-assignment-2
+rolebinding.rbac.authorization.k8s.io "deployer-nopatch" deleted from dso202-assignment-2 namespace
+role.rbac.authorization.k8s.io "deployer-nopatch" deleted from dso202-assignment-2 namespace
+serviceaccount "deployer-nopatch" deleted from dso202-assignment-2 namespace
+
+# 'unchanged' above: with no difference, kubectl apply sends no PATCH at all. Repeat with a real change (replicas 2 -> 3):
+$ kubectl describe role deployer-nopatch -n dso202-assignment-2 | sed -n '/PolicyRule/,$p'
+PolicyRule:
+  Resources                    Non-Resource URLs  Resource Names  Verbs
+  ---------                    -----------------  --------------  -----
+  configmaps                   []                 []              [get list watch create update]
+  secrets                      []                 []              [get list watch create update]
+  services                     []                 []              [get list watch create update]
+  deployments.apps             []                 []              [get list watch create update]
+  statefulsets.apps            []                 []              [get list watch create update]
+  ingresses.networking.k8s.io  []                 []              [get list watch create update]
+  endpoints                    []                 []              [get list watch]
+  events                       []                 []              [get list watch]
+  pods/log                     []                 []              [get list watch]
+  pods                         []                 []              [get list watch]
+  controllerrevisions.apps     []                 []              [get list watch]
+  replicasets.apps             []                 []              [get list watch]
+
+$ sed 's/replicas: 2/replicas: 3/' manifests/09-deployment-frontend.yaml | kubectl --as=system:serviceaccount:dso202-assignment-2:deployer-nopatch apply -f -
+Warning: resource deployments/frontend is missing the kubectl.kubernetes.io/last-applied-configuration annotation which is required by kubectl apply. kubectl apply should only be used on resources created declaratively by either kubectl create --save-config or kubectl apply. The missing annotation will be patched automatically.
+Error from server (Forbidden): error when applying patch:
+{"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"frontend\",\"app.kubernetes.io/name\":\"tasktracker\",\"app.kubernetes.io/part-of\":\"tasktracker\"},\"name\":\"frontend\",\"namespace\":\"dso202-assignment-2\"},\"spec\":{\"replicas\":3,\"selector\":{\"matchLabels\":{\"app.kubernetes.io/component\":\"frontend\",\"app.kubernetes.io/name\":\"tasktracker\"}},\"template\":{\"metadata\":{\"labels\":{\"app.kubernetes.io/component\":\"frontend\",\"app.kubernetes.io/name\":\"tasktracker\",\"app.kubernetes.io/part-of\":\"tasktracker\"}},\"spec\":{\"automountServiceAccountToken\":false,\"containers\":[{\"env\":[{\"name\":\"BACKEND_URL\",\"valueFrom\":{\"configMapKeyRef\":{\"key\":\"BACKEND_URL\",\"name\":\"app-config\"}}}],\"image\":\"dso202-frontend:1.0\",\"imagePullPolicy\":\"Never\",\"livenessProbe\":{\"httpGet\":{\"path\":\"/\",\"port\":\"http\"},\"initialDelaySeconds\":5,\"periodSeconds\":10},\"name\":\"frontend\",\"ports\":[{\"containerPort\":8080,\"name\":\"http\"}],\"readinessProbe\":{\"httpGet\":{\"path\":\"/\",\"port\":\"http\"},\"periodSeconds\":5},\"resources\":{\"limits\":{\"cpu\":\"200m\",\"memory\":\"64Mi\"},\"requests\":{\"cpu\":\"50m\",\"memory\":\"32Mi\"}},\"securityContext\":{\"allowPrivilegeEscalation\":false,\"capabilities\":{\"drop\":[\"ALL\"]}}}],\"securityContext\":{\"runAsGroup\":101,\"runAsNonRoot\":true,\"runAsUser\":101,\"seccompProfile\":{\"type\":\"RuntimeDefault\"}},\"serviceAccountName\":\"frontend\"}}}}\n"}},"spec":{"replicas":3}}
+to:
+Resource: "apps/v1, Resource=deployments", GroupVersionKind: "apps/v1, Kind=Deployment"
+Name: "frontend", Namespace: "dso202-assignment-2"
+for: "STDIN": error when patching "STDIN": deployments.apps "frontend" is forbidden: User "system:serviceaccount:dso202-assignment-2:deployer-nopatch" cannot patch resource "deployments" in API group "apps" in the namespace "dso202-assignment-2"
+
+$ kubectl auth can-i patch deployments --as=system:serviceaccount:dso202-assignment-2:deployer-nopatch -n dso202-assignment-2
+no
+
+$ sed 's/replicas: 2/replicas: 3/' manifests/09-deployment-frontend.yaml | kubectl --as=system:serviceaccount:dso202-assignment-2:deployer apply -f -   # the real Role includes patch
+Warning: resource deployments/frontend is missing the kubectl.kubernetes.io/last-applied-configuration annotation which is required by kubectl apply. kubectl apply should only be used on resources created declaratively by either kubectl create --save-config or kubectl apply. The missing annotation will be patched automatically.
+deployment.apps/frontend configured
+
+$ kubectl --as=system:serviceaccount:dso202-assignment-2:deployer apply -f manifests/09-deployment-frontend.yaml && kubectl -n dso202-assignment-2 rollout status deploy/frontend --timeout=60s   # back to 2
+deployment.apps/frontend configured
+deployment "frontend" successfully rolled out
+
+$ kubectl delete rolebinding,role,serviceaccount deployer-nopatch -n dso202-assignment-2
+rolebinding.rbac.authorization.k8s.io "deployer-nopatch" deleted from dso202-assignment-2 namespace
+role.rbac.authorization.k8s.io "deployer-nopatch" deleted from dso202-assignment-2 namespace
+serviceaccount "deployer-nopatch" deleted from dso202-assignment-2 namespace
+

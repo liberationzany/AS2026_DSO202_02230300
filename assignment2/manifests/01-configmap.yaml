@@ -1,0 +1,42 @@
+# =============================================================================
+# File        : manifests/01-configmap.yaml
+# Applied by  : deployer ServiceAccount (see 12-rbac-deployer.yaml)
+#
+# Same env var contract as Assignment 1 (Image Build Guide 4.2). What changed
+# because of the Ingress (11-ingress.yaml):
+#   - BACKEND_URL is now the public HTTPS origin the browser already loaded
+#     the page from. The Ingress routes /api/* on that same origin to
+#     backend-svc, so the browser makes same-origin requests and backend-svc
+#     can go back to ClusterIP (Assignment 1 had to expose it as NodePort).
+#     It cannot be left empty: docker-entrypoint.sh uses
+#     ": ${BACKEND_URL:=http://localhost:8080}", and ":=" also replaces an
+#     EMPTY value with that default.
+#   - CORS_ORIGIN is narrowed from "*" to that single origin.
+#   - DB_HOST is db-svc, now a normal ClusterIP Service in front of the
+#     StatefulSet (06-service-db.yaml). The StatefulSet's own headless
+#     Service, db-headless, gives the Pod its identity; clients do not use it.
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: dso202-assignment-2
+  labels:
+    app.kubernetes.io/part-of: tasktracker
+    dso202/assignment: "2"
+data:
+  # --- backend ---
+  DB_HOST: db-svc
+  DB_PORT: "5432"
+  DB_NAME: taskdb
+  APP_PORT: "8080"
+  CORS_ORIGIN: "https://tasktracker.localhost:8443"
+  # --- db (official postgres image variable name; must equal DB_NAME) ---
+  POSTGRES_DB: taskdb
+  # --- frontend (rendered into config.js at container start) ---
+  # *.localhost is reserved for loopback (RFC 6761): curl and browsers
+  # resolve it to 127.0.0.1 themselves, without DNS and without a hosts-file
+  # edit. (A public wildcard name such as localtest.me was tried first; this
+  # network's DNS drops its 127.0.0.1 answer, see README.) 8443 is the host
+  # port of the local proxy to the Ingress controller (scripts/host-proxy.sh).
+  BACKEND_URL: "https://tasktracker.localhost:8443"
