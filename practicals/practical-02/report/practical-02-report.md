@@ -402,55 +402,53 @@ so it becomes `Available` again.
 
 ## 5. Reflection
 
-**What was difficult.** The hardest part was not a Kubernetes concept
-but turning the guide into working files. The PDF copy of the companion
-file cuts off long lines at the page edge, and several of them are the
-important ones. These include the node image digest, the `echo ... >>`
-redirections in every writer Pod, and the `index.html` lines of the
-webnote init container. I rebuilt each one from the guide's expected
-output. For example, the guide's Stage 2 output reads `... start
-pod=static-writer node=worker-node-1` from `/data/ledger.txt`, which fixes
-both the missing variable (`${NODE_NAME}`) and the target file. I took the
-digest from Practical 1's cluster file, which uses the same image. A wrong
-reconstruction would have failed silently, for example by writing to the
-wrong file, so I checked each one against the stage output when it ran.
+**What I found difficult.** The hardest part for me was not a Kubernetes
+concept but turning the guide into working files. The PDF of the companion
+file cuts long lines off at the page edge, and some of those were the
+important ones: the node image digest, the `echo ... >>` redirections in
+every writer Pod, and the `index.html` lines of the webnote init container.
+I had to rebuild each one from the guide's expected output. For example,
+the Stage 2 output shows `... start pod=static-writer node=worker-node-1`
+in `/data/ledger.txt`, which told me both the missing variable
+(`${NODE_NAME}`) and the file it writes to. I took the digest from my
+Practical 1 cluster file, since it uses the same image. A wrong guess here
+would have failed silently (for example by writing to the wrong file), so I
+checked each reconstructed line against the stage output when I ran it.
 
-**An error met, and how it was diagnosed.** In Stage 5, the guide shows
-`nslookup webnote...` returning three addresses, each labelled with its Pod
-name. My output gave the three addresses with no per-Pod names. My first
-thought was that the headless Service was misconfigured. I checked with
+**An error I hit, and how I worked it out.** In Stage 5 the guide shows
+`nslookup webnote...` returning three addresses, each with its Pod name.
+Mine returned the three addresses without the names, and my first thought
+was that I had misconfigured the headless Service. To check, I ran
 `kubectl get endpointslice -l kubernetes.io/service-name=webnote`, which
-listed exactly the three Pod IPs, and with a direct
-`nslookup webnote-1.webnote.dso202-practical-02.svc.cluster.local`, which
-resolved to `10.244.1.3`, matching `kubectl get pods -o wide`. So DNS was
-correct. The difference is in how `busybox:1.37`'s `nslookup` formats the
-answer for the set name. The per-Pod records exist and resolve. A second,
-smaller surprise: Pods on `worker-node-1` received `10.244.2.x` addresses,
-not `10.244.1.x` as in the guide. kind gives each node its Pod CIDR in
-join order, so the CIDR does not follow the node's name.
+listed exactly the three Pod IPs, and then looked up one Pod directly with
+`nslookup webnote-1.webnote.dso202-practical-02.svc.cluster.local`. It
+resolved to `10.244.1.3`, the same as `kubectl get pods -o wide`. So my DNS
+was fine; `busybox:1.37`'s `nslookup` just prints the answer for the set
+name differently, and the per-Pod records were there all along. A smaller
+surprise was that Pods on `worker-node-1` got `10.244.2.x` addresses rather
+than `10.244.1.x` as in the guide. I learned that kind hands out Pod CIDRs
+in the order the nodes join, not by node name.
 
-**Environment issues.** The first pulls of `nginx:1.30-alpine` and
-`postgres:18-alpine` were slow, about 40 seconds for nginx and nearly 5
-minutes for PostgreSQL. A `kubectl get pods -w` that I had limited in time
-ended before `postgres-0` became Ready. `kubectl wait
---for=condition=Ready` then confirmed readiness rather than the watch.
-Running from Git Bash also needed `MSYS_NO_PATHCONV=1`. Without it, Git
-Bash rewrites container paths such as `/data/ledger.txt` into Windows
-paths before `kubectl` sees them.
+**Problems with my environment.** The first image pulls were slow: about
+40 seconds for nginx and nearly 5 minutes for PostgreSQL. A
+`kubectl get pods -w` that I had put a time limit on ended before
+`postgres-0` was Ready, so I used `kubectl wait --for=condition=Ready` to
+confirm it instead. Because I work in Git Bash, I also had to set
+`MSYS_NO_PATHCONV=1`; without it Git Bash turns container paths like
+`/data/ledger.txt` into Windows paths before `kubectl` sees them.
 
-**What I would do differently.** I would pre-pull the four images into
-the nodes (`kind load docker-image`) before Stage 1, so that readiness
-timings measure the probes rather than the network. I would also capture
-the `-w` watches with `kubectl wait` plus a final `get`, rather than
-relying on a timeout.
+**What I would do differently.** Next time I would load the four images
+into the nodes (`kind load docker-image`) before Stage 1, so that the
+readiness timings measure my probes rather than my internet connection. I
+would also capture state with `kubectl wait` plus a final `get` instead of
+relying on a timed `-w` watch.
 
-**One thing that remains unclear.** `kubectl explain` says
-`maxUnavailable` "might not be effective for the OrderedReady
-podManagementPolicy", but not whether it is ignored completely or only
-partly. I would need to test it on a StatefulSet with `Parallel`
-management to find out how the two interact.
+**What I am still unsure about.** `kubectl explain` says `maxUnavailable`
+"might not be effective for the OrderedReady podManagementPolicy", but not
+whether it is ignored completely or only partly. I would need to test it on
+a StatefulSet with `Parallel` management to find out.
 
-Extensions 1–4 were not attempted in this run.
+I did not attempt Extensions 1-4.
 
 ## 6. References
 

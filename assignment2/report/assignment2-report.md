@@ -299,54 +299,57 @@ mechanics on a toy resource.
 
 ## 5. Reflection
 
-**The bug that Kubernetes hid.** The most useful result was not planned.
-I added a liveness probe that, by design, should never restart the backend
-for a database outage. When the backend restarted anyway, I could have
-concluded that the probe was wrong and loosened it. Instead I read the
-termination reason first (`Error`, exit code 1, not a probe kill) and then
+**The bug that Kubernetes hid.** The most useful thing I found in this
+assignment was something I was not looking for. I had added a liveness
+probe that, by design, should never restart the backend just because the
+database was down. When the backend restarted anyway, my first instinct
+was that the probe was wrong and I should loosen it. Instead I checked the
+termination reason first (`Error`, exit code 1, not a probe kill), and then
 the previous container's log, which pointed to an unhandled `error` event
 in the `pg` Pool.
 
-Assignment 1's checklist claimed the backend "does not crash-loop when
-started before the database". That was true, but it only tested startup.
-Kubernetes' restart policy made the crash look like self-healing, and it is
-only a crash *loop* that anyone notices. I now check `lastState.terminated`
-and `--previous` logs whenever a restart count moves, rather than trusting
-that Running means healthy.
+My Assignment 1 checklist said the backend "does not crash-loop when
+started before the database". That was true, but I had only tested
+startup. Kubernetes' restart policy made the crash look like self-healing,
+and only a crash *loop* gets noticed. Since then I check
+`lastState.terminated` and the `--previous` logs whenever a restart count
+goes up, instead of trusting that Running means healthy.
 
 **A mistake in my own test.** My first persistence test inserted a task
-with status `todo`, and the table's check constraint rejected it. I trimmed
-that from the evidence and re-ran it with a valid status. The failed insert
-still used up a sequence value, which is why the surviving rows are 1, 2, 3
-and **5**. I left that gap as it is.
+with status `todo`, and the table's check constraint rejected it. I removed
+that from the evidence and ran the test again with a valid status. The
+failed insert still used up a sequence number, which is why the rows that
+survive are 1, 2, 3 and **5**. I left that gap as it is.
 
-**Environment problems.**
-- The OpenSSL path problem from the CSR lab returned in
-  `make-tls-secret.sh`, which exited silently under `set -e` with its output
-  discarded. I fixed the cause (Windows paths for native tools) rather than
-  the symptom, and removed the `2>/dev/null` that hid it.
-- The ingress controller image (116 MB) took 21 minutes to pull. I used
-  that time to deploy and test everything that does not depend on it,
-  instead of waiting.
-- **"It works with `--resolve`" was the key diagnostic.** When HTTPS
-  failed, the controller, the certificate and the proxy were all suspects.
-  Pinning the name to 127.0.0.1 made the request succeed. That cleared
-  everything inside the cluster at once and pointed at name resolution,
-  where `nslookup -type=A` showed the missing record.
-- The ingress-nginx admission webhook made a server-side dry-run of the
+**Problems with my environment.**
+- The OpenSSL path problem from the CSR lab came back in
+  `make-tls-secret.sh`. The script exited silently under `set -e` because I
+  had thrown away its error output. I fixed the real cause (Windows paths
+  for native tools) rather than the symptom, and removed the `2>/dev/null`
+  that had hidden it.
+- The ingress controller image (116 MB) took 21 minutes to download. I used
+  that time to deploy and test everything that did not depend on it,
+  instead of just waiting.
+- **"It works with `--resolve`" was the test that solved my HTTPS
+  problem.** When HTTPS failed, I suspected the controller, the certificate
+  and the proxy. When I pinned the name to 127.0.0.1, the request worked.
+  That ruled out everything inside the cluster at once and pointed me to
+  name resolution, where `nslookup -type=A` showed the missing record.
+- The ingress-nginx admission webhook made even a server-side dry run of my
   Ingress *fail* while the controller was still starting (`failed calling
-  webhook ... connection refused`). Once a controller with a webhook is
-  installed, Ingress objects cannot even be validated until it is healthy.
+  webhook ... connection refused`). I learned that once a controller with a
+  webhook is installed, Ingress objects cannot even be validated until it
+  is healthy.
 
 **What I would do differently:**
 - Write the probes before the first deployment, and test failure (database
-  down) as deliberately as success.
-- Use cert-manager instead of a script for TLS, once the cluster has
-  outbound access fast enough to install it.
-- Ingress-nginx is retired and receives no updates after March 2026, as
-  §2.2.6 notes. A new deployment should use another controller or the
-  Gateway API. I kept it because the notes and the kind provider manifest
-  use it.
+  down) as carefully as success.
+- Use cert-manager instead of a script for TLS, once my cluster's internet
+  connection is fast enough to install it.
+- Choose a different controller, or the Gateway API, for anything new.
+  Ingress-nginx is retired and gets no updates after March 2026, as section
+  2.2.6 of the notes says. I kept it here because the notes and the kind
+  provider manifest use it.
 
 ## 6. References
 

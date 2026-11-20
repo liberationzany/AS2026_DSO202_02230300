@@ -236,60 +236,60 @@ also separate *who may merge*, which a path filter cannot do.
 
 ## 5. Reflection
 
-**What was difficult.** The Argo CD installation was the difficult part:
-about 45 minutes instead of the one to two the guide suggests. The first
-`kubectl wait --timeout=420s` and a second 590 s wait both timed out, with
-every Pod in `ContainerCreating` or `Init:0/1`.
+**What I found difficult.** Installing Argo CD took me about 45 minutes,
+not the one or two the guide suggests. My first `kubectl wait
+--timeout=420s` and a second 590 s wait both timed out, with every Pod
+still in `ContainerCreating` or `Init:0/1`.
 
-**How it was diagnosed.** `kubectl describe pod argocd-server-...` showed
-only `Scheduled` and `Pulling image "quay.io/argoproj/argocd:v3.6.1"`,
-with no error, which ruled out scheduling and configuration. I then tested
-from inside a node:
+**How I worked out the cause.** `kubectl describe pod argocd-server-...`
+showed only `Scheduled` and `Pulling image "quay.io/argoproj/argocd:v3.6.1"`
+and no error, so I knew it was not a scheduling or configuration problem. I
+then tested the registry from inside a node:
 
 ```
 docker exec dso202-worker curl -w '%{http_code}' https://quay.io/v2/
 ```
 
-This returned 401 in 1.5 s. The registry was reachable, so DNS and
-connectivity were fine. To tell a stuck pull apart from a slow one, I
-pulled the same image on the host in parallel. It took **21 min 40 s**,
-which confirmed the cause was download bandwidth, not Kubernetes. Watching
-the size of containerd's `ingest` directory on `dso202-worker` (58 MB and
-growing) confirmed the in-node pull was progressing.
+It returned 401 in 1.5 s, so DNS and connectivity were fine. To tell
+whether the pull was stuck or just slow, I pulled the same image on my
+laptop at the same time. That took **21 min 40 s**, which convinced me the
+problem was my download speed, not Kubernetes. Watching containerd's
+`ingest` directory on `dso202-worker` grow (58 MB and rising) confirmed the
+pull inside the node was still moving.
 
-**A misleading error on the way.** `argocd-server` showed
-`CreateContainerConfigError: secret "argocd-redis" not found`. It looked
-like a broken install. In fact, that Secret is created by an init
-container in the redis Pod, and that init container was still waiting for
-the same slow image. It cleared without any change once redis started.
-The general lesson is to read Pods in dependency order before treating an
-error as the root cause.
+**An error that misled me.** At one point `argocd-server` showed
+`CreateContainerConfigError: secret "argocd-redis" not found`, and I
+thought the install was broken. It turned out that this Secret is created
+by an init container in the redis Pod, which was itself still waiting for
+the same slow image. Once redis started, the error disappeared without me
+changing anything. What I took from this is to look at Pods in the order
+they depend on each other before deciding which error is the real cause.
 
 **Smaller issues.**
 
 - Self-heal was faster than my one-second polling loop, so the `OutOfSync`
-  state never appeared in the loop's output. It is captured only in the
+  state never showed up in my loop's output. I could only see it in the
   controller's log.
-- The host clock and the node clock differ by about 5 seconds: the loop
-  printed 15:40:42 for the scale, while the controller logged 15:40:47.
+- My laptop's clock and the node's clock were about 5 seconds apart: my
+  loop printed 15:40:42 for the scale, while the controller logged
+  15:40:47.
 
 **What I would do differently.** I would pre-pull the three Argo CD images
-before the session, or pin a specific Argo CD version (rather than
-`stable`) and load the images with `kind load`. I would also give the
-Argo CD install its own cluster: `kind delete cluster` is the guide's
-cleanup step, and here it could not be run without destroying Practical 1
-and Assignment 1.
+before the session, or pin a specific Argo CD version instead of `stable`
+and load the images with `kind load`. I would also give Argo CD its own
+cluster. The guide's cleanup step is `kind delete cluster`, and I could not
+run it without also destroying my Practical 1 and Assignment 1 work.
 
-**One thing that remains unclear.** The controller log shows
+**What I am still unsure about.** The controller log shows
 `SelfHealAttemptsCount:1` on the Experiment 1 sync and
 `SelfHealAttemptsCount:2` on the Experiment 2 correction. The Experiment 1
-sync was triggered by a new commit, not by drift, so it is unclear to me
-why the counter was already counting. This needs checking against the
-Argo CD documentation on self-heal backoff.
+sync came from a new commit, not from drift, so I do not understand why the
+counter was already counting. I want to check this against the Argo CD
+documentation on self-heal backoff.
 
-UI screenshots were not captured in this run. The evidence is the CLI
-equivalent of each view (application sync and health status, resource
-tree, sync history and controller events).
+I did not capture UI screenshots for this practical. Instead, my evidence
+uses the CLI equivalent of each view: sync and health status, the resource
+tree, the sync history and the controller events.
 
 ## 6. References
 

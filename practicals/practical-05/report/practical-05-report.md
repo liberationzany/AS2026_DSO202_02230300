@@ -339,55 +339,55 @@ example Argo CD with `prune: true` from Practical 4, or
 
 ## 5. Reflection
 
-**The Kustomize mistake, and how the rendered output exposed it.** For the
-QA annotation, I assumed a JSON 6902 `add` to
-`/metadata/annotations/<key>` would fail because the base Deployment has no
-`annotations` map. To be "safe", I wrote a two-operation patch: first
+**My Kustomize mistake, and how the rendered output caught it.** For the
+QA annotation, I assumed that a JSON 6902 `add` to
+`/metadata/annotations/<key>` would fail, because the base Deployment has
+no `annotations` map. To be "safe", I wrote a two-operation patch: first
 `add /metadata/annotations` with `value: {}`, then add the key. I even
-wrote in the patch's comment that the render fails without the first
+wrote in the patch comment that the render would fail without the first
 operation.
 
-Before relying on that comment, I tested it by rendering a scratch copy of
-the overlay with only the single `add`. The render succeeded and contained
+Before trusting that comment, I tested it by rendering a scratch copy of
+the overlay with only the single `add`. It rendered fine and contained
 `training.example.com/owner: qa-team`, so Kustomize v5.8.1 creates the
-missing map itself and my assumption was wrong. That made me ask what the
-"safe" first operation actually does when an annotations map already
-exists. I rendered the two-operation patch against a Deployment that
-already carried `existing.example.com/keep: "yes"`, and the output showed
-the existing annotation **gone**: `add` on the parent path *replaces* the
-whole map. My defensive patch would have silently deleted other teams'
-annotations the first time anyone added one to the base.
+missing map itself and I was wrong. That made me wonder what my "safe"
+first operation does when an annotations map already exists. I rendered
+the two-operation patch against a Deployment that already had
+`existing.example.com/keep: "yes"`, and the existing annotation was
+**gone**: `add` on the parent path *replaces* the whole map. My defensive
+patch would have quietly deleted other teams' annotations the first time
+someone added one to the base.
 
-The diagnostic commands were `kubectl kustomize <overlay> | grep -A4 '^kind:
+I found this with `kubectl kustomize <overlay> | grep -A4 '^kind:
 Deployment'` and a `sed -n '/^metadata:/,/^  name:/p'` over the render. I
-removed the first operation, and the patch file's comment now explains why.
-Reading the patch alone looked correct both times; only the rendered output
-showed what it really did.
+removed the first operation, and the patch comment now explains why. Both
+times, the patch looked correct when I read it; only the rendered output
+showed me what it really did. That is the main thing I learned in this
+practical.
 
-**A second issue: `kubectl diff -k` on a first deployment.** For each new
+**A second issue: `kubectl diff -k` on a first deployment.** For every new
 environment, the guide's safe step 2 failed with
 `Error from server (NotFound): namespaces "webapp-dev" not found`. The
 guide's `|| true` hides this, so it is easy to read "no output" as "no
-differences". The cause is that `kubectl diff` performs a server-side dry
-run, and the API server cannot dry-run objects into a namespace that does
-not exist yet, even though the same overlay would create it. On a first
-deployment, the render (step 1) is the only real preview. On later
-deployments the namespace exists, and `diff` worked as intended: in Task 6
-it showed the exact `generation` and `configMap.name` change before the
-apply.
+differences". The reason is that `kubectl diff` does a server-side dry run,
+and the API server cannot dry-run objects into a namespace that does not
+exist yet, even though the same overlay would create it. So on a first
+deployment, the render (step 1) was my only real preview. Once the
+namespace existed, `diff` worked as intended: in Task 6 it showed me the
+exact `generation` and `configMap.name` change before I applied it.
 
 **What I would do differently.** I would add an annotation to the base
-early on, so that any patch touching `/metadata/annotations` is tested
-against a non-empty map from the start. For first deployments, I would
-create namespaces in a separate step, so that `kubectl diff -k` is
-meaningful even the first time.
+early, so that any patch touching `/metadata/annotations` is tested against
+a non-empty map from the start. I would also create namespaces as a
+separate step, so that `kubectl diff -k` means something even the first
+time.
 
-**One thing that remains unclear.** Practical 4's Argo CD would prune the
-orphaned `web-content-<old-hash>` ConfigMaps. However, I have not checked
-whether Argo CD's own rendering of an overlay keeps the old one long enough
-for a ReplicaSet rollback to work. That would decide whether a rollback
-under GitOps should be done by `git revert` (regenerating the old hash) or
-by `kubectl rollout undo`.
+**What I am still unsure about.** Practical 4's Argo CD would prune the
+orphaned `web-content-<old-hash>` ConfigMaps. I have not checked whether
+Argo CD keeps the old one long enough for a ReplicaSet rollback to work.
+The answer would decide whether, under GitOps, I should roll back with
+`git revert` (which regenerates the old hash) or with
+`kubectl rollout undo`.
 
 ## 6. References
 

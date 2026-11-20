@@ -359,10 +359,10 @@ values change instead.
 
 ## 5. Reflection
 
-**The error met, and how it was diagnosed.** The first podinfo install
+**The error I hit, and how I worked it out.** My first podinfo install
 failed after 10 min 33 s with `Progress deadline exceeded`, even though I
-had given `--timeout 15m`. I first assumed the timeout had been ignored. I
-checked three things:
+had passed `--timeout 15m`. My first thought was that Helm had ignored my
+timeout. I checked three things:
 
 - `kubectl get deploy my-podinfo -o jsonpath='{...conditions...}
   progressDeadlineSeconds=...'` printed `progressDeadlineSeconds=600`.
@@ -370,44 +370,44 @@ checked three things:
   ... in 10m5.458s ... Image size: 34763248 bytes`.
 - One Pod was `Running` while the other was still `ContainerCreating`.
 
-The pieces fit together. The 35 MB image took longer than the
+Putting these together: the 35 MB image took longer to download than the
 Deployment's own 600-second progress deadline. The Deployment controller
-then reported that the rollout had stalled, and Helm 4's default `watcher`
-wait (kstatus) treats that condition as a definitive failure, so it gave
-up before reaching my `--timeout`. `--timeout` only caps Helm's waiting; it
-does not extend the deadline Kubernetes applies to the Deployment. Once the
-image had downloaded, I uninstalled the `failed` release and reinstalled
-it, which took 12 s. This kept the revision numbers aligned with the
-notes.
+then reported the rollout as stalled, and Helm 4's default `watcher` wait
+(kstatus) treats that as a definite failure, so it stopped before my
+`--timeout` was reached. I learned that `--timeout` only limits how long
+Helm waits; it does not extend the deadline Kubernetes puts on the
+Deployment. Once the image was downloaded, I uninstalled the `failed`
+release and installed it again, which took 12 s. I did it this way so that
+my revision numbers would still match the notes.
 
 **Other things that went wrong.**
 
-- The type-conversion failure in Stage 4 left a **partial release**: the
-  ConfigMap and the Service existed with no Deployment, and the release was
-  marked `failed`. Helm applies objects in kind order, and nothing is
-  undone without `--rollback-on-failure`.
-- `kubectl apply --dry-run=server` for prod first failed with
-  `namespaces "dso202-prod" not found`. This is the same first-deployment
-  trap as Practical 5's `kubectl diff -k`. Even so, the misspelled field in
-  Failure 4 was still reported, because the API server decodes the object
-  strictly before it looks up the namespace.
+- The type-conversion failure in Stage 4 left me with a **partial
+  release**: the ConfigMap and the Service existed but no Deployment, and
+  the release was marked `failed`. Helm applies objects in kind order, and
+  nothing is undone unless `--rollback-on-failure` is used.
+- My `kubectl apply --dry-run=server` for prod first failed with
+  `namespaces "dso202-prod" not found`. It is the same first-deployment
+  trap I met with `kubectl diff -k` in Practical 5. Even so, the misspelled
+  field in Failure 4 was still reported, because the API server decodes the
+  object strictly before it looks up the namespace.
 
 **What I would do differently.**
 
 - Pre-pull large chart images, or raise `progressDeadlineSeconds` for first
-  installs on a slow link.
-- Use `--rollback-on-failure` on every install and upgrade, so that a
-  failure never leaves a partial release.
-- Set the kubeconfig context namespace back to `default` after each
-  practical, because a stale `HELM_NAMESPACE` is an easy way to install
+  installs when my connection is slow.
+- Use `--rollback-on-failure` on every install and upgrade, so a failure
+  never leaves me with a partial release.
+- Set my kubeconfig context namespace back to `default` after each
+  practical, because a leftover `HELM_NAMESPACE` makes it easy to install
   into the wrong namespace.
 
-**One thing that remains unclear.** The notes say `--dry-run=server`
-"renders against the live cluster". In this run it accepted both an
-unknown field and an allocated NodePort, so it apparently does not send
-the rendered objects to the API server as dry-run requests. I have not yet
-found in the Helm 4 documentation exactly which server-side checks it does
-perform beyond enabling `lookup` and real `.Capabilities`.
+**What I am still unsure about.** The notes say `--dry-run=server`
+"renders against the live cluster". When I tried it, it accepted both an
+unknown field and a NodePort that was already in use, so it seems not to
+send the rendered objects to the API server as dry-run requests. I have not
+yet found in the Helm 4 documentation exactly which server-side checks it
+does make, beyond enabling `lookup` and real `.Capabilities`.
 
 ## 6. References
 

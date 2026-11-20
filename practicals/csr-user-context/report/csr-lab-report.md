@@ -282,60 +282,64 @@ Granting `pods` does not include them.
 
 ## 5. Reflection
 
-**Problem: the `kubectl apply` of my CSR said the file did not exist.**
-Steps 3–4 first failed with `the path "/c/Users/.../01-csr-saroj.yaml" does
-not exist`. The cascade that followed (`NotFound`, then an empty
-`saroj.crt`) made it look as if the CSR had been rejected.
+**Problem: `kubectl apply` said my CSR file did not exist.** Steps 3-4
+first failed with `the path "/c/Users/.../01-csr-saroj.yaml" does not
+exist`. The errors that followed (`NotFound`, then an empty `saroj.crt`)
+made it look as if the CSR had been rejected, and at first that is what I
+believed. This is how I worked it out:
 
-1. I ruled out the file: `cat` from the same shell read it.
-2. The difference was the reader. Bash and OpenSSL are MSYS programs and
-   understand `/c/...`. `kubectl.exe` is a native Windows program.
-3. I had exported `MSYS_NO_PATHCONV=1` for the earlier labs, which stops
-   Git Bash translating `/c/...` to `C:/...` for Windows programs.
-4. Switching the variable to a `C:/` path fixed it.
+1. I checked the file was there: `cat` from the same shell could read it.
+2. So the difference had to be the program reading it. Bash and OpenSSL are
+   MSYS programs and understand `/c/...` paths; `kubectl.exe` is a native
+   Windows program.
+3. I had set `MSYS_NO_PATHCONV=1` for my earlier labs, and that stops Git
+   Bash from translating `/c/...` to `C:/...` for Windows programs.
+4. When I used a `C:/` path instead, it worked.
 
 The same cause later broke one Windows `python` call and one `openssl`
-call. The MinGW build of OpenSSL also could not open `/c/...` paths, even
+call. The MinGW build of OpenSSL could not open `/c/...` paths either, even
 though it runs under MSYS. I corrected those evidence entries and noted
-them, rather than leaving failed commands in.
+them, instead of leaving failed commands in.
 
-Lesson: on Git Bash, decide which programs see which path style before
-writing a helper, and do not trust a failure cascade until its first error
-is understood.
+What I learned: on Git Bash, I need to decide which programs get which path
+style before writing a helper script, and I should not trust a chain of
+failures until I understand the first error.
 
 **Problem: a revoked token that still worked.** The notes say a
-ServiceAccount is "revocable by deleting the object". My first run deleted
-`ci-bot` and two seconds later the same token still listed pods. That
-seemed to contradict the notes. Instead of writing that down, I re-ran with
-timestamps: accepted at +1 s, `Unauthorized` at +16 s.
+ServiceAccount is "revocable by deleting the object". When I deleted
+`ci-bot`, the same token could still list pods two seconds later. It looked
+like the notes were wrong, but instead of writing that down I repeated the
+test with timestamps: the token was accepted at +1 s and `Unauthorized` at
++16 s.
 
-So revocation works, with a delay of a few seconds. That is consistent with
-the API server caching successful token authentications briefly, and with
-it seeing the deletion through its watch cache. I did not find the exact
-TTL from this cluster's flags (`kube-apiserver.yaml` sets none), so the "a
-few seconds" is what I measured, not a documented figure. Either way, it is
-a delay of seconds, against the certificate's three months.
+So revocation does work, just with a delay of a few seconds. That fits with
+the API server briefly caching successful token authentications and
+learning about the deletion through its watch cache. I could not find the
+exact cache time in this cluster's flags (`kube-apiserver.yaml` sets none),
+so "a few seconds" is what I measured, not a documented figure. Either way,
+it is a delay of seconds, compared with three months for a certificate.
 
 **Problem: my own misleading evidence.** My first check of the embedded
-kubeconfig fields reported 12 characters each. That is the length of
-`DATA+OMITTED`, the redaction placeholder that `kubectl config view` prints
-without `--raw`. I replaced it with the `--raw` length check and kept the
-redacted output too, because it shows that the default view hides secrets.
+kubeconfig fields reported 12 characters each. That is just the length of
+`DATA+OMITTED`, the placeholder `kubectl config view` prints when `--raw`
+is not used. I replaced it with a `--raw` length check, but kept the
+redacted output as well, because it shows that the default view hides
+secrets.
 
-**What surprised me.** Group membership is the risky part of certificates.
-In Ext 3, deleting `saroj`'s own binding, the obvious "offboarding" step,
+**What surprised me.** The risky part of certificates is group membership.
+In Ext 3, deleting `saroj`'s own binding - the obvious "offboarding" step -
 did nothing, because `saroj` still matched the `dev-team` group binding. A
 group is written into the certificate when it is issued and cannot be taken
-out afterwards. The only way to remove someone from a group before expiry
-is to remove the binding for the whole group.
+out later. The only way to remove someone from a group before the
+certificate expires is to remove the binding for the whole group.
 
 **What I would do differently:**
 
 - Issue lab certificates with a short expiry, as I did for `pema` (24 h),
-  instead of 90 days. The notes' value is fine for a course, but the
-  revocation table shows why short lifetimes are the real control.
+  instead of 90 days. The notes' value is fine for a course, but my
+  revocation tests showed that short lifetimes are the real control.
 - Use a group-only design with ServiceAccounts or OIDC for anything shared.
-- Keep the RBAC as files from the start rather than converting imperative
+- Write the RBAC as files from the start, instead of converting imperative
   commands afterwards.
 
 ## 6. References

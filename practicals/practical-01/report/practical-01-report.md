@@ -210,44 +210,39 @@ real a fault class as one that matches nothing.
 
 ## 5. Reflection
 
-The most time-consuming part was not a Kubernetes concept but an
-operational one: the first `nginx:1.30-alpine` pull took over six minutes
-with no error reported, so the Pod sat in `ContainerCreating` long enough
-to look stuck. Diagnosing it correctly meant reading `kubectl describe
-pod`'s `Events:` section rather than assuming a misconfiguration, and
-independently confirming network access with `crictl pull` from inside
-the node container. This reinforced the guide's own advice in section
-8.5/8.6: when a Pod misbehaves, the events section is the first place to
-look, not the last.
+The part that cost me the most time was not a Kubernetes concept at all.
+My first `nginx:1.30-alpine` pull took more than six minutes and printed no
+error, so the Pod sat in `ContainerCreating` and I honestly thought I had
+broken something. Instead of changing my manifests, I went to the
+`Events:` section of `kubectl describe pod`, which only said it was still
+pulling, and then ran `crictl pull` from inside the node container to check
+that the node could reach the registry at all. It could; the download was
+just slow. This taught me what the guide says in sections 8.5/8.6: when a
+Pod misbehaves, I should read its events first, not last.
 
-A second point worth recording: the guide's Stage 6 narrative states the
-EndpointSlice for `web-clusterip` will list three addresses "matching the
-three ready Pods of web-deployment", but because `web-pod` from Stage 4
-was never deleted and carries the same selector labels, four addresses
-appeared in this run. This was not a misconfiguration — it is the
-correct, documented behaviour of label-based selection — but it shows
-that the guide's expected output implicitly assumes objects from earlier
-stages have been cleaned up, which was not explicit in the instructions
-at that point.
+I was also surprised in Stage 6. The guide says the EndpointSlice for
+`web-clusterip` should list three addresses, but I got four. The reason was
+my own `web-pod` from Stage 4: I had not deleted it, and it has the same
+labels the Service selects on, so it was counted too. Nothing was wrong
+with my cluster - this is exactly how label selectors are meant to work -
+but it showed me that the guide's expected output assumes earlier objects
+have been cleaned up, even though it does not say so at that point.
 
-If repeating this practical, I would apply `manifests/02-pod-web.yaml`
-with a label deliberately distinct from the Deployment's Pod template
-(or delete `web-pod` before Stage 6) so the EndpointSlice count matches
-the guide's narrative exactly, and I would pre-pull images with `docker
-exec <node> crictl pull <image>` before timing any stage that depends on
-a fresh image being available.
+If I did this practical again, I would give `web-pod` a label that the
+Deployment does not use (or delete it before Stage 6), so my output matches
+the guide. I would also pre-pull images with
+`docker exec <node> crictl pull <image>` before timing anything that needs
+a fresh image.
 
-One thing that remains unclear: `practical1.pdf` references a "Stage 11
-Step 2" / "section 21 review questions" and manifest filenames
+One thing I still have not resolved: `practical1.pdf` mentions a
+"Stage 11 Step 2", "section 21 review questions" and manifest names
 (`03-pod-probes.yaml`, `05-pod-multicontainer.yaml`,
-`08-service-nodeport.yaml`, `09-pod-client.yaml`) that do not correspond
-to the eight listings actually defined in the companion manifest file —
-the companion file's own listing index only goes up to Listing 8
-(`06-pod-client.yaml`). The two documents appear to have been generated
-against slightly different intended structures. This report follows the
-companion file's Listing index as authoritative, since it is the file
-explicitly marked as the source of "every YAML listing referenced" by the
-guide.
+`08-service-nodeport.yaml`, `09-pod-client.yaml`) that do not match the
+eight listings in the companion manifest file, whose index stops at
+Listing 8 (`06-pod-client.yaml`). It looks to me as if the two documents
+were written for slightly different versions of the practical. I followed
+the companion file's listing index, because the guide names that file as
+the source of every YAML listing.
 
 ## 6. References
 

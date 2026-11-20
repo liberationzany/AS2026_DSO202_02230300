@@ -246,40 +246,43 @@ environment.
 
 ## 6. Reflection
 
-**What went wrong first was DNS, not Kubernetes.** The hosts were
-originally `*.localtest.me`, a public name that resolves to loopback. On
-this network only the IPv6 answer survives (diagnosed in Assignment 2), so
-all four environments were moved to `*.localhost`. Because each tool
-declares the host in one place per environment, the change was a single
-`sed` across both packages. Assignment 2's copy-per-file layout would have
-been worse.
+**What went wrong first was DNS, not Kubernetes.** I first used
+`*.localtest.me` hosts, a public name that resolves to loopback. On my
+network only the IPv6 answer gets through (I found this in Assignment 2),
+so I moved all four environments to `*.localhost`. Because each tool
+declares the host in one place per environment, this was a single `sed`
+across both packages. With Assignment 2's copy-per-file layout it would
+have been much more work, which showed me the point of packaging.
 
-**My own tests corrected my assumptions three times:**
+**My own tests proved me wrong three times:**
 
 1. I expected a new ConfigMap key to reach the backend. It changed the hash
-   but not the environment, because the Deployment lists its variables one
+   but not the environment, because my Deployment lists its variables one
    by one.
-2. I expected "change backend config" to restart only the backend. The
+2. I expected "change the backend config" to restart only the backend. The
    shared generator restarted the database too.
-3. I expected `helm rollback` to behave like an upgrade with old values. It
-   replays the stored manifest, generated data included. In this case that
-   was the desired behaviour (the old certificate came back), but it would
-   surprise anyone relying on `lookup` during a rollback.
+3. I expected `helm rollback` to behave like an upgrade with the old
+   values. It actually replays the stored manifest, including generated
+   data. Here that was what I wanted (the old certificate came back), but
+   it would surprise anyone who relies on `lookup` during a rollback.
 
-**A bug I caught before it shipped:** reusing a TLS certificate after the
-host changes. It would have passed every test that keeps the host fixed.
+**A bug I caught before it shipped:** my chart reused the TLS certificate
+even after the host changed. It would have passed every test I had that
+kept the host the same, so I only caught it by thinking about what my
+upgrade test was not covering.
 
 **What I would do differently:**
 
 - Keep `helm.sh/chart` and `app.kubernetes.io/version` out of the Pod
-  template labels, and use only the stable selector labels plus
-  `component`. Then a chart bump would not restart the database (revision
-  2).
+  template labels and use only the stable selector labels plus
+  `component`. Then a chart version bump would not restart the database (as
+  it did in revision 2).
 - Use one generator per tier in Kustomize, and `envFrom` in the base as
-  well as the chart.
-- Add a SIGTERM handler to the backend: close the HTTP server and the pool,
-  then exit. That turns 30-second rollouts into one-second ones.
-- Put the generated Helm password into an external secret store, or at
+  well as in the chart.
+- Add a SIGTERM handler to the backend that closes the HTTP server and the
+  pool and then exits. That would turn 30-second rollouts into one-second
+  ones.
+- Store the generated Helm password in an external secret store, or at
   least mark the Secret `helm.sh/resource-policy: keep`, so that
   `helm uninstall` with `retainOnDelete` keeps both the data *and* the
   password that opens it.
