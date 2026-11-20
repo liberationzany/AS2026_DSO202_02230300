@@ -7,7 +7,7 @@ The brief requires a separate public repository, so the submission lives at:
 | Submission item | Value |
 |---|---|
 | Repository | `https://github.com/liberationzany/dso202-gitops` (public) |
-| Commit SHA of `main` at submission | `5fcb23e` (`git ls-remote https://github.com/liberationzany/dso202-gitops.git main`) |
+| Commit SHA of `main` at submission | `cc3c2ec` (`git ls-remote https://github.com/liberationzany/dso202-gitops.git main`) |
 | Tags | `v1.0.0` (baseline), `v1.1.0` (frontend 1.1), `v1.2.0` (backend 1.1 with `APP_ENV`) |
 | README | rebuild sequence, pinned versions, cleanup, credential handling, deviations, answers Q1–Q6 |
 | Evidence | `docs/evidence.md` (Tasks 1–9) and `docs/screenshots/` |
